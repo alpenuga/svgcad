@@ -19,7 +19,7 @@ let state = {
         viewMode: 'cut',
         L: 70, D: 50, d: 24, s: 36
     },
-    primitives: [] // Пользовательские и ИИ примитивы
+    primitives: []
 };
 
 // База стандартных деталей по умолчанию
@@ -31,7 +31,6 @@ const defaultLibrary = {
 
 let library = JSON.parse(localStorage.getItem('cad_lib')) || defaultLibrary;
 
-// Инициализация при запуске
 window.onload = () => {
     const savedKey = localStorage.getItem('gemini_api_key');
     if (savedKey) document.getElementById('gemini-key').value = savedKey;
@@ -39,15 +38,13 @@ window.onload = () => {
     generatePart();
 };
 
-// Переключение вкладок меню
 function switchTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
     document.getElementById(tabId).classList.add('active');
-    event.currentTarget.classList.add('active');
+    if (event && event.currentTarget) event.currentTarget.classList.add('active');
 }
 
-// Обновление настроек штампа и листа
 function updateStampSettings() {
     state.format = document.getElementById('paper-format').value;
     state.orient = document.getElementById('paper-orient').value;
@@ -71,26 +68,21 @@ function updateStampSettings() {
 
 // ГЛАВНЫЙ РЕНДЕР ЧЕРТЕЖА В SVG (Масштаб 1 ед = 1 мм)
 function renderSVG() {
-    // Определение габаритов листа в мм
     let W = state.format === 'A4' ? 210 : 297;
     let H = state.format === 'A4' ? 297 : 420;
     if (state.orient === 'landscape') { [W, H] = [H, W]; }
 
-    // Отступы рамки по ГОСТ (слева 20мм для подшивки, остальные по 5мм)
     const mLeft = 20, mTop = 5, mRight = 5, mBottom = 5;
     const frameW = W - mLeft - mRight;
     const frameH = H - mTop - mBottom;
 
-    // Проверка, чтобы штамп не пробил левую рамку
     let actualStampW = Math.min(state.stamp.width, frameW);
 
     let svg = `<svg id="main-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}mm" height="${H}mm">
     <defs>
-        <!-- Паттерн штриховки ГОСТ (под 45 градусов) -->
         <pattern id="hatch" width="4" height="4" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
             <line x1="0" y1="0" x2="0" y2="4" stroke="#000" stroke-width="0.25" />
         </pattern>
-        <!-- Стрелки для размеров -->
         <marker id="arrow-end" viewBox="0 0 10 6" refX="10" refY="3" markerWidth="8" markerHeight="5" orient="auto-start-reverse">
             <path d="M 0 0 L 10 3 L 0 6 z" fill="#000"/>
         </marker>
@@ -104,20 +96,15 @@ function renderSVG() {
         </style>
     </defs>
 
-    <!-- Внешний контур листа -->
     <rect x="0" y="0" width="${W}" height="${H}" fill="#fff" stroke="#ccc" stroke-width="0.2"/>
-    
-    <!-- Основная рамка чертежа -->
     <rect x="${mLeft}" y="${mTop}" width="${frameW}" height="${frameH}" class="main-line"/>`;
 
-    // Отрисовка рабочей зоны (детали и примитивы)
     svg += `<g id="drawing-layer">`;
     state.primitives.forEach(p => {
         svg += drawPrimitiveSVG(p);
     });
     svg += `</g>`;
 
-    // Отрисовка штампа в правом нижнем углу
     if (state.stamp.type !== 'none') {
         const stRight = W - mRight;
         const stBottom = H - mBottom;
@@ -131,7 +118,7 @@ function renderSVG() {
 
 // Генератор адаптивного штампа
 function generateStampSVG(x, bottomY, width) {
-    const k = width / 185; // Коэффициент масштабирования колонок при сдвиге левого края
+    const k = width / 185;
     const s = state.stamp;
     let out = `<g id="stamp-layer">`;
 
@@ -150,10 +137,8 @@ function generateStampSVG(x, bottomY, width) {
     const totalH = baseH + extraH;
     const topY = bottomY - totalH;
 
-    // Белая подложка штампа (перекрывает линии чертежа если наехали)
     out += `<rect x="${x}" y="${topY}" width="${width}" height="${totalH}" fill="#fff" class="main-line"/>`;
 
-    // Дополнительные строки сверху (Изм. Лист №док Подп Дата)
     for (let i = 0; i < s.extraRows; i++) {
         let ry = topY + i * 5;
         out += `<line x1="${x}" y1="${ry + 5}" x2="${x + 65*k}" y2="${ry + 5}" class="thin-line"/>`;
@@ -164,36 +149,29 @@ function generateStampSVG(x, bottomY, width) {
         out += `<line x1="${x}" y1="${mainTop}" x2="${x + width}" y2="${mainTop}" class="main-line"/>`;
     }
 
-    // Вертикальное деление левого блока (Разраб, Пров...) - ширина 65*k
     const colLeftW = 65 * k;
     out += `<line x1="${x + colLeftW}" y1="${topY}" x2="${x + colLeftW}" y2="${bottomY}" class="main-line"/>`;
     out += `<line x1="${x + 17*k}" y1="${mainTop}" x2="${x + 17*k}" y2="${bottomY}" class="thin-line"/>`;
     out += `<line x1="${x + 40*k}" y1="${mainTop}" x2="${x + 40*k}" y2="${bottomY}" class="thin-line"/>`;
     out += `<line x1="${x + 55*k}" y1="${mainTop}" x2="${x + 55*k}" y2="${bottomY}" class="thin-line"/>`;
 
-    // Горизонтальные строки в левом блоке
     const rowsCount = s.type === 'simple' ? 6 : 11;
     for (let i = 1; i < rowsCount; i++) {
         let ry = mainTop + i * 5;
         out += `<line x1="${x}" y1="${ry}" x2="${x + colLeftW}" y2="${ry}" class="thin-line"/>`;
     }
 
-    // Правый блок (Шифр, Название, Материал, Масштаб)
     const rightX = x + colLeftW;
     const rightW = width - colLeftW;
 
     if (s.type === 'full') {
-        // Шифр сверху (высота 15мм)
         out += `<line x1="${rightX}" y1="${mainTop + 15}" x2="${x + width}" y2="${mainTop + 15}" class="main-line"/>`;
-        // Нижняя полоса (Материал + Организация, высота 15мм от низа)
         out += `<line x1="${rightX}" y1="${bottomY - 15}" x2="${x + width}" y2="${bottomY - 15}" class="main-line"/>`;
-        // Блок Литера, Масса, Масштаб справа
         const litX = x + 135 * k;
         out += `<line x1="${litX}" y1="${mainTop + 15}" x2="${litX}" y2="${bottomY}" class="main-line"/>`;
         out += `<line x1="${litX}" y1="${mainTop + 20}" x2="${x + width}" y2="${mainTop + 20}" class="thin-line"/>`;
         out += `<line x1="${litX}" y1="${mainTop + 35}" x2="${x + width}" y2="${mainTop + 35}" class="main-line"/>`;
 
-        // Тексты полного штампа
         out += `<text x="${rightX + rightW/2}" y="${mainTop + 10}" text-anchor="middle" class="gost-text" font-size="5">${s.code}</text>`;
         out += `<text x="${rightX + (70*k)/2}" y="${mainTop + 28}" text-anchor="middle" class="gost-text" font-size="4.5">${s.title}</text>`;
         out += `<text x="${rightX + (70*k)/2}" y="${bottomY - 6}" text-anchor="middle" class="gost-text" font-size="3.5">${s.mat}</text>`;
@@ -201,14 +179,12 @@ function generateStampSVG(x, bottomY, width) {
         out += `<text x="${litX + 5}" y="${mainTop + 19}" class="gost-text" font-size="2.5">Лит.   Масса   Масштаб</text>`;
         out += `<text x="${litX + 35*k}" y="${mainTop + 29}" class="gost-text" font-size="4">${s.scale}</text>`;
 
-        // Подписи слева
         out += `<text x="${x + 1}" y="${mainTop + 4}" class="gost-text" font-size="2.5">Изм. Лист № докум. Подп. Дата</text>`;
         out += `<text x="${x + 1}" y="${mainTop + 9}" class="gost-text" font-size="2.8">Разраб.</text>`;
         out += `<text x="${x + 18*k}" y="${mainTop + 9}" class="gost-text" font-size="2.8">${s.dev}</text>`;
         out += `<text x="${x + 1}" y="${mainTop + 14}" class="gost-text" font-size="2.8">Пров.</text>`;
         out += `<text x="${x + 18*k}" y="${mainTop + 14}" class="gost-text" font-size="2.8">${s.chk}</text>`;
     } else {
-        // Упрощенный штамп
         out += `<line x1="${rightX}" y1="${mainTop + 10}" x2="${x + width}" y2="${mainTop + 10}" class="main-line"/>`;
         out += `<text x="${rightX + rightW/2}" y="${mainTop + 7}" text-anchor="middle" class="gost-text" font-size="4">${s.code}</text>`;
         out += `<text x="${rightX + rightW/2}" y="${mainTop + 22}" text-anchor="middle" class="gost-text" font-size="4.5">${s.title} (${s.scale})</text>`;
@@ -220,25 +196,14 @@ function generateStampSVG(x, bottomY, width) {
     return out;
 }
 
-// Отрисовка отдельного примитива
 function drawPrimitiveSVG(p) {
     const cls = p.style === 'thin' ? 'thin-line' : p.style === 'dashed' ? 'dashed-line' : p.style === 'axis' ? 'axis-line' : 'main-line';
     
-    if (p.type === 'line') {
-        return `<line x1="${p.x1}" y1="${p.y1}" x2="${p.x2}" y2="${p.y2}" class="${cls}"/>`;
-    }
-    if (p.type === 'rect') {
-        return `<rect x="${p.x1}" y="${p.y1}" width="${p.x2}" height="${p.y2}" class="${cls}"/>`;
-    }
-    if (p.type === 'circle') {
-        return `<circle cx="${p.x1}" cy="${p.y1}" r="${p.x2}" class="${cls}"/>`;
-    }
-    if (p.type === 'hatch') {
-        return `<rect x="${p.x1}" y="${p.y1}" width="${p.x2}" height="${p.y2}" fill="url(#hatch)" stroke="#000" stroke-width="0.25"/>`;
-    }
-    if (p.type === 'text') {
-        return `<text x="${p.x1}" y="${p.y1}" class="gost-text" font-size="${p.size || 4}">${p.text}</text>`;
-    }
+    if (p.type === 'line') return `<line x1="${p.x1}" y1="${p.y1}" x2="${p.x2}" y2="${p.y2}" class="${cls}"/>`;
+    if (p.type === 'rect') return `<rect x="${p.x1}" y="${p.y1}" width="${p.x2}" height="${p.y2}" class="${cls}"/>`;
+    if (p.type === 'circle') return `<circle cx="${p.x1}" cy="${p.y1}" r="${p.x2}" class="${cls}"/>`;
+    if (p.type === 'hatch') return `<rect x="${p.x1}" y="${p.y1}" width="${p.x2}" height="${p.y2}" fill="url(#hatch)" stroke="#000" stroke-width="0.25"/>`;
+    if (p.type === 'text') return `<text x="${p.x1}" y="${p.y1}" class="gost-text" font-size="${p.size || 4}">${p.text}</text>`;
     if (p.type === 'dim') {
         const dx = p.x2 - p.x1, dy = p.y2 - p.y1;
         const len = Math.round(Math.hypot(dx, dy));
@@ -252,7 +217,6 @@ function drawPrimitiveSVG(p) {
     return '';
 }
 
-// ПАРАМЕТРИЧЕСКИЙ ГЕНЕРАТОР (3 Вида, Разрез, Сечение)
 function generatePart() {
     state.part.type = document.getElementById('part-type').value;
     state.part.viewMode = document.getElementById('view-mode').value;
@@ -263,41 +227,31 @@ function generatePart() {
 
     state.primitives = [];
     const { type, viewMode, L, D, d, s } = state.part;
-    
-    // Базовая точка отсчета главного вида
     const ox = 45, oy = 40;
 
     if (type === 'bushing') {
-        // Главный вид (или Фронтальный РАЗРЕЗ)
         const rOut = D / 2, rIn = d / 2, rStep = s / 2;
         const cy = oy + rOut;
 
         if (viewMode === 'cut') {
-            // Заштрихованные половинки разреза
             state.primitives.push({ type: 'hatch', x1: ox, y1: cy - rOut, x2: L/2, y2: rOut - rIn });
             state.primitives.push({ type: 'hatch', x1: ox + L/2, y1: cy - rStep, x2: L/2, y2: rStep - rIn });
             state.primitives.push({ type: 'hatch', x1: ox, y1: cy + rIn, x2: L/2, y2: rOut - rIn });
             state.primitives.push({ type: 'hatch', x1: ox + L/2, y1: cy + rIn, x2: L/2, y2: rStep - rIn });
-            // Видимые линии отверстия в разрезе
             state.primitives.push({ type: 'line', x1: ox, y1: cy - rIn, x2: ox + L, y2: cy - rIn, style: 'main' });
             state.primitives.push({ type: 'line', x1: ox, y1: cy + rIn, x2: ox + L, y2: cy + rIn, style: 'main' });
             state.primitives.push({ type: 'text', x1: ox + L/2 - 15, y1: oy - 6, text: 'Разрез А-А', size: 4.5 });
         } else {
-            // Невидимые линии отверстия
             state.primitives.push({ type: 'line', x1: ox, y1: cy - rIn, x2: ox + L, y2: cy - rIn, style: 'dashed' });
             state.primitives.push({ type: 'line', x1: ox, y1: cy + rIn, x2: ox + L, y2: cy + rIn, style: 'dashed' });
         }
 
-        // Внешний контур ступенчатой втулки
         state.primitives.push({ type: 'rect', x1: ox, y1: cy - rOut, x2: L/2, y2: D, style: 'main' });
         state.primitives.push({ type: 'rect', x1: ox + L/2, y1: cy - rStep, x2: L/2, y2: s, style: 'main' });
-        // Осевая
         state.primitives.push({ type: 'line', x1: ox - 5, y1: cy, x2: ox + L + 5, y2: cy, style: 'axis' });
-        // Размеры
         state.primitives.push({ type: 'dim', x1: ox, y1: cy + rOut + 10, x2: ox + L, y2: cy + rOut + 10, text: `${L}` });
         state.primitives.push({ type: 'dim', x1: ox - 8, y1: cy - rOut, x2: ox - 8, y2: cy + rOut, text: `⌀${D}` });
 
-        // Если выбраны 3 основных вида -> строим Вид слева и Вид сверху
         if (viewMode === '3views' || viewMode === 'cut') {
             const leftCx = ox + L + 35 + rOut;
             state.primitives.push({ type: 'circle', x1: leftCx, y1: cy, x2: rOut, style: 'main' });
@@ -315,7 +269,6 @@ function generatePart() {
         }
 
         if (viewMode === 'section') {
-            // Вынесенное СЕЧЕНИЕ А-А
             const secX = ox + L * 0.75;
             state.primitives.push({ type: 'line', x1: secX, y1: cy - rStep - 8, x2: secX, y2: cy + rStep + 8, style: 'axis' });
             state.primitives.push({ type: 'text', x1: secX - 2, y1: cy - rStep - 10, text: 'А', size: 4.5 });
@@ -328,14 +281,12 @@ function generatePart() {
             state.primitives.push({ type: 'hatch', x1: scx - rStep*0.7, y1: cy - rStep*0.7, x2: rStep*1.4, y2: (rStep-rIn)*0.6 });
         }
     } else if (type === 'plate') {
-        // Плита с отверстием
         state.primitives.push({ type: 'rect', x1: ox, y1: oy, x2: L, y2: D, style: 'main' });
         state.primitives.push({ type: 'circle', x1: ox + L/2, y1: oy + D/2, x2: d/2, style: 'main' });
         state.primitives.push({ type: 'line', x1: ox - 4, y1: oy + D/2, x2: ox + L + 4, y2: oy + D/2, style: 'axis' });
         state.primitives.push({ type: 'line', x1: ox + L/2, y1: oy - 4, x2: ox + L/2, y2: oy + D + 4, style: 'axis' });
         state.primitives.push({ type: 'dim', x1: ox, y1: oy + D + 8, x2: ox + L, y2: oy + D + 8, text: `${L}` });
 
-        // Нижний вид / Разрез
         const by = oy + D + 22;
         if (viewMode === 'cut') {
             state.primitives.push({ type: 'hatch', x1: ox, y1: by, x2: (L - d)/2, y2: s });
@@ -345,12 +296,10 @@ function generatePart() {
         state.primitives.push({ type: 'line', x1: ox + (L-d)/2, y1: by, x2: ox + (L-d)/2, y2: by + s, style: viewMode === 'cut' ? 'main' : 'dashed' });
         state.primitives.push({ type: 'line', x1: ox + (L+d)/2, y1: by, x2: ox + (L+d)/2, y2: by + s, style: viewMode === 'cut' ? 'main' : 'dashed' });
     } else if (type === 'shaft') {
-        // Вал со шпоночным пазом
         state.primitives.push({ type: 'rect', x1: ox, y1: oy, x2: L, y2: D, style: 'main' });
         state.primitives.push({ type: 'rect', x1: ox + 15, y1: oy + D/2 - d/2, x2: L - 30, y2: d, style: 'main' });
         state.primitives.push({ type: 'line', x1: ox - 5, y1: oy + D/2, x2: ox + L + 5, y2: oy + D/2, style: 'axis' });
         
-        // Вынесенное сечение вала
         const scx = ox + L + 35, scy = oy + D/2;
         state.primitives.push({ type: 'text', x1: scx - 8, y1: oy - 5, text: 'А-А (Сечение)', size: 4 });
         state.primitives.push({ type: 'circle', x1: scx, y1: scy, x2: D/2, style: 'main' });
@@ -361,7 +310,6 @@ function generatePart() {
     renderSVG();
 }
 
-// Добавление ручного примитива
 function addPrimitive() {
     const p = {
         type: document.getElementById('prim-type').value,
@@ -381,7 +329,6 @@ function clearDrawing() {
     renderSVG();
 }
 
-// РАБОТА С БИБЛИОТЕКОЙ ДЕТАЛЕЙ
 function updateLibUI() {
     const sel = document.getElementById('lib-select');
     sel.innerHTML = '';
@@ -439,14 +386,46 @@ function deleteFromLib() {
     }
 }
 
-// ИИ GOOGLE GEMINI (OCR И ГЕНЕРАЦИЯ ПАРАМЕТРОВ)
+// ИИ GOOGLE GEMINI (OCR И АВТОЗАГРУЗКА МОДЕЛЕЙ)
 function saveApiKey() {
     localStorage.setItem('gemini_api_key', document.getElementById('gemini-key').value.trim());
 }
 
+// Автоматическое получение доступных моделей по ключу пользователя
+async function fetchUserModels() {
+    const key = document.getElementById('gemini-key').value.trim();
+    const status = document.getElementById('ai-status');
+    if (!key) {
+        alert("Сначала введите API ключ!");
+        return;
+    }
+    status.innerText = "⏳ Запрашиваем список доступных моделей...";
+    try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+        const data = await res.json();
+        if (data.error) throw new Error(data.error.message);
+
+        const sel = document.getElementById('gemini-model');
+        sel.innerHTML = '';
+        let count = 0;
+        data.models.forEach(m => {
+            if (m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent')) {
+                let opt = document.createElement('option');
+                opt.value = m.name; // уже содержит "models/..."
+                opt.innerText = m.name.replace('models/', '');
+                sel.appendChild(opt);
+                count++;
+            }
+        });
+        status.innerText = `✅ Загружено моделей: ${count}. Выберите нужную из списка.`;
+    } catch (e) {
+        status.innerText = "❌ Ошибка загрузки моделей: " + e.message;
+    }
+}
+
 async function runGeminiOCR() {
     const key = document.getElementById('gemini-key').value.trim();
-    const model = document.getElementById('gemini-model').value;
+    let model = document.getElementById('gemini-model').value;
     const fileInput = document.getElementById('ai-image');
     const userPrompt = document.getElementById('ai-prompt').value;
     const status = document.getElementById('ai-status');
@@ -456,7 +435,12 @@ async function runGeminiOCR() {
         return;
     }
 
-    status.innerText = "⏳ Обработка запроса нейросетью Gemini...";
+    // Гарантируем правильный префикс "models/..." без задвоения
+    if (!model.startsWith('models/')) {
+        model = 'models/' + model;
+    }
+
+    status.innerText = `⏳ Обработка запроса моделью ${model}...`;
     
     const systemInstruction = `Ты инженер-конструктор ГОСТ. Проанализируй изображение и/или текст пользователя. 
     Верни СТРОГО валидный JSON без маркдауна и пояснений в следующем формате:
@@ -483,7 +467,7 @@ async function runGeminiOCR() {
     }
 
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/${model}:generateContent?key=${key}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: contentsParts }] })
@@ -496,7 +480,6 @@ async function runGeminiOCR() {
         rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
         const result = JSON.parse(rawText);
 
-        // Применение распознанных параметров в программу
         if (result.title) {
             document.getElementById('st-title').value = result.title;
             state.stamp.title = result.title;
@@ -536,7 +519,6 @@ function fileToBase64(file) {
     });
 }
 
-// Скачивание готового SVG файла
 function downloadSVG() {
     const svgEl = document.getElementById('main-svg');
     const serializer = new XMLSerializer();
