@@ -1,30 +1,38 @@
-const CACHE_NAME = 'svg-cad-v2';
+const CACHE = "cad-v1";
 const ASSETS = [
-  './',
-  './index.html',
-  './app.js',
-  './manifest.json'
+  "./", "./index.html", "./manifest.json",
+  "./css/style.css",
+  "./js/core.js",
+  "./js/stamp.js",
+  "./js/toolbar.js",
+  "./js/projections.js",
+  "./js/ai-parser.js",
+  "./js/library.js",
+  "./js/tutorial.js",
+  "./js/app.js"
 ];
 
-self.addEventListener('install', event => {
-  self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
+self.addEventListener("install", e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+});
+
+self.addEventListener("activate", e => {
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+    ).then(() => self.clients.claim())
   );
 });
 
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(keys => Promise.all(
-      keys.map(key => {
-        if (key !== CACHE_NAME) return caches.delete(key);
-      })
-    ))
-  );
-});
-
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
+self.addEventListener("fetch", e => {
+  const url = new URL(e.request.url);
+  // Запросы к Gemini — всегда в сеть, не кэшируем
+  if (url.hostname.includes("googleapis.com")) return;
+  e.respondWith(
+    caches.match(e.request).then(r => r || fetch(e.request).then(resp => {
+      const copy = resp.clone();
+      caches.open(CACHE).then(c => c.put(e.request, copy));
+      return resp;
+    }).catch(() => caches.match("./index.html")))
   );
 });
