@@ -1,6 +1,7 @@
 // js/app.js — точка входа, меню, экраны
 import { state, renderSheet, addPrimitive, PAPERS } from "./core.js";
 import { buildToolbarHtml, bindToolbar } from "./toolbar.js";
+import { recognizeImage, fileToBase64, sanitizeAIPrimitives } from "./ai-parser.js"; // добавили sanitizeAIPrimitives
 import "./stamp.js";
 import { loadStamp } from "./stamp.js";
 loadStamp();   // загружаем сохранённый штамп или ГОСТ по умолчанию
