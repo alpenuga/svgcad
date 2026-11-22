@@ -1,298 +1,34 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI SVG Чертежник ГОСТ</title>
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#1e293b">
-    <style>
-        :root { --bg: #0f172a; --panel: #1e293b; --text: #f8fafc; --accent: #3b82f6; --border: #334155; }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
-        body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        
-        /* Навигация */
-        nav { display: flex; background: var(--panel); border-bottom: 1px solid var(--border); overflow-x: auto; flex-shrink: 0; }
-        nav button { background: none; border: none; color: #94a3b8; padding: 12px 16px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; border-bottom: 3px solid transparent; }
-        nav button.active { color: var(--text); border-bottom-color: var(--accent); background: rgba(59, 130, 246, 0.1); }
-
-        /* Основной контейнер */
-        main { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 15px; }
-        .tab-content { display: none; flex-direction: column; gap: 15px; height: 100%; }
-        .tab-content.active { display: flex; }
-
-        /* Панели и формы */
-        .card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 15px; }
-        .card h3 { margin-bottom: 12px; font-size: 16px; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 6px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
-        .form-group { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
-        label { font-size: 12px; color: #cbd5e1; }
-        input, select, textarea { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 8px; border-radius: 4px; font-size: 14px; }
-        button.btn { background: var(--accent); color: white; border: none; padding: 10px 14px; border-radius: 6px; font-weight: 600; cursor: pointer; text-align: center; }
-        button.btn-sec { background: #475569; }
-        button.btn-danger { background: #ef4444; }
-        button.btn:active { opacity: 0.8; }
-
-        /* Холст чертежа */
-        #canvas-container { flex: 1; background: #cbd5e1; border-radius: 8px; overflow: auto; display: flex; justify-content: center; align-items: flex-start; padding: 10px; min-height: 350px; }
-        svg { background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-width: 100%; height: auto; }
-
-        /* Учебник */
-        .manual { line-height: 1.6; font-size: 14px; }
-        .manual h2 { color: var(--accent); margin: 15px 0 8px; }
-        .manual ul, .manual ol { margin-left: 20px; margin-bottom: 10px; }
-        .manual code { background: var(--bg); padding: 2px 5px; border-radius: 4px; font-family: monospace; color: #38bdf8; }
-
-        /* Стили печати (экспорт в PDF) */
-        @media print {
-            nav, .controls-area { display: none !important; }
-            body, main, #canvas-container { background: white; padding: 0; margin: 0; height: auto; overflow: visible; }
-            svg { box-shadow: none; width: 100%; height: 100%; max-width: none; }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b6cbf">
+  <title>CAD-Мастер</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
+  <header id="topbar">
+    <button id="menuBtn" aria-label="Меню">☰</button>
+    <h1>CAD-Мастер</h1>
+    <button id="helpBtn" aria-label="Справка">?</button>
+  </header>
 
+  <aside id="menu" class="hidden">
     <nav>
-        <button class="active" onclick="switchTab('tab-draw')">📐 Чертеж</button>
-        <button onclick="switchTab('tab-stamp')">📝 Штамп и Лист</button>
-        <button onclick="switchTab('tab-construct')">🔧 Конструктор / База</button>
-        <button onclick="switchTab('tab-ai')">🤖 ИИ Сканер (OCR)</button>
-        <button onclick="switchTab('tab-help')">📚 Справка (Учебник)</button>
+      <button data-view="draw">✏️ Чертёж</button>
+      <button data-view="ai">📷 Распознать фото</button>
+      <button data-view="views">📐 Виды / Разрез</button>
+      <button data-view="library">📚 Библиотека</button>
+      <button data-view="stampSettings">🏛️ Штамп</button>
+      <button data-view="settings">⚙️ Настройки</button>
+      <button data-view="tutorial">📖 Учебник</button>
     </nav>
+  </aside>
 
-    <main>
-        <!-- ВКЛАДКА 1: ЧЕРТЕЖ -->
-        <div id="tab-draw" class="tab-content active">
-            <div class="card controls-area">
-                <div class="grid">
-                    <button class="btn" onclick="downloadSVG()">💾 Скачать SVG</button>
-                    <button class="btn btn-sec" onclick="window.print()">🖨️ Печать / PDF</button>
-                    <button class="btn btn-danger" onclick="clearDrawing()">🗑️ Очистить поле</button>
-                </div>
-            </div>
-            <div id="canvas-container"></div>
-        </div>
+  <main id="app"></main>
 
-        <!-- ВКЛАДКА 2: ШТАМП И ЛИСТ -->
-        <div id="tab-stamp" class="tab-content">
-            <div class="card">
-                <h3>Параметры листа (ГОСТ)</h3>
-                <div class="grid">
-                    <div class="form-group">
-                        <label>Формат листа</label>
-                        <select id="paper-format" onchange="updateStampSettings()">
-                            <option value="A4">А4 (210 × 297 мм)</option>
-                            <option value="A3">А3 (297 × 420 мм)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Ориентация</label>
-                        <select id="paper-orient" onchange="updateStampSettings()">
-                            <option value="portrait">Вертикальная (Книжная)</option>
-                            <option value="landscape">Горизонтальная (Альбомная)</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3>Геометрия штампа (Правый нижний угол)</h3>
-                <div class="form-group">
-                    <label>Тип штампа (сложность)</label>
-                    <select id="stamp-type" onchange="updateStampSettings()">
-                        <option value="full">Стандартный ГОСТ (Форма 1 - сложный)</option>
-                        <option value="simple">Упрощенный (Учебный)</option>
-                        <option value="mini">Мини-штамп (Только название и шифр)</option>
-                        <option value="none">Без штампа (Только рамка)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Ширина штампа (Сдвиг левого края): <span id="stamp-w-val">185</span> мм</label>
-                    <input type="range" id="stamp-width" min="80" max="185" value="185" oninput="updateStampSettings()">
-                    <small style="color:#94a3b8; font-size:11px;">Уменьшите, если штамп уперся в левую рамку или нужно освободить место.</small>
-                </div>
-                <div class="form-group">
-                    <label>Дополнительные строки сверху штампа (Изм.): <span id="stamp-r-val">2</span> шт.</label>
-                    <input type="range" id="stamp-rows" min="0" max="6" value="2" oninput="updateStampSettings()">
-                </div>
-            </div>
-
-            <div class="card">
-                <h3>Надписи в штампе</h3>
-                <div class="grid">
-                    <div class="form-group"><label>Наименование детали</label><input type="text" id="st-title" value="Втулка направляющая" oninput="updateStampSettings()"></div>
-                    <div class="form-group"><label>Обозначение (Шифр)</label><input type="text" id="st-code" value="АБВГ.711141.001" oninput="updateStampSettings()"></div>
-                    <div class="form-group"><label>Материал</label><input type="text" id="st-mat" value="Сталь 45 ГОСТ 1050-2013" oninput="updateStampSettings()"></div>
-                    <div class="form-group"><label>Масштаб</label><input type="text" id="st-scale" value="1:1" oninput="updateStampSettings()"></div>
-                    <div class="form-group"><label>Разработал (ФИО)</label><input type="text" id="st-dev" value="Иванов" oninput="updateStampSettings()"></div>
-                    <div class="form-group"><label>Проверил (ФИО)</label><input type="text" id="st-chk" value="Петров" oninput="updateStampSettings()"></div>
-                    <div class="form-group"><label>Организация / ВУЗ</label><input type="text" id="st-org" value="Кафедра Инженерии" oninput="updateStampSettings()"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ВКЛАДКА 3: КОНСТРУКТОР И БАЗА -->
-        <div id="tab-construct" class="tab-content">
-            <div class="card">
-                <h3>📚 Библиотека параметрических деталей</h3>
-                <div class="form-group">
-                    <label>Выберите деталь из базы:</label>
-                    <select id="lib-select" onchange="loadFromLib()"></select>
-                </div>
-                <div class="grid" style="margin-top:8px;">
-                    <button class="btn" onclick="saveToLib()">➕ Сохранить текущую в базу</button>
-                    <button class="btn btn-danger" onclick="deleteFromLib()">🗑️ Удалить из базы</button>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3>⚙️ Генератор: Виды, Разрез, Сечение</h3>
-                <p style="font-size:12px; color:#94a3b8; margin-bottom:10px;">Настройте габариты детали и выберите режим отображения по ГОСТ:</p>
-                <div class="form-group">
-                    <label>Тип базовой детали</label>
-                    <select id="part-type" onchange="generatePart()">
-                        <option value="bushing">Ступенчатая втулка (Цилиндр с отверстием)</option>
-                        <option value="plate">Плита с отверстиями и пазом</option>
-                        <option value="shaft">Вал со шпоночным пазом</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Режим проекций и разрезов</label>
-                    <select id="view-mode" onchange="generatePart()">
-                        <option value="3views">Три основных вида (Спереди, Сверху, Слева)</option>
-                        <option value="cut">Фронтальный РАЗРЕЗ (с штриховкой 45°)</option>
-                        <option value="section">Вынесенное СЕЧЕНИЕ (А-А)</option>
-                    </select>
-                </div>
-                <div class="grid">
-                    <div class="form-group"><label>Длина / Высота (L), мм</label><input type="number" id="p-L" value="70" onchange="generatePart()"></div>
-                    <div class="form-group"><label>Внешний размер (D/W), мм</label><input type="number" id="p-D" value="50" onchange="generatePart()"></div>
-                    <div class="form-group"><label>Внутр. отверстие (d), мм</label><input type="number" id="p-d" value="24" onchange="generatePart()"></div>
-                    <div class="form-group"><label>Ступень / Толщина (s), мм</label><input type="number" id="p-s" value="36" onchange="generatePart()"></div>
-                </div>
-                <button class="btn" style="width:100%; margin-top:5px;" onclick="generatePart(); switchTab('tab-draw');">Построить чертеж детали</button>
-            </div>
-
-            <div class="card">
-                <h3>✏️ Ручное черчение примитивами</h3>
-                <p style="font-size:12px; color:#94a3b8; margin-bottom:10px;">Координаты в миллиметрах от левого верхнего угла листа.</p>
-                <div class="grid">
-                    <div class="form-group">
-                        <label>Примитив</label>
-                        <select id="prim-type">
-                            <option value="line">Линия (X1,Y1 -> X2,Y2)</option>
-                            <option value="rect">Прямоугольник (X,Y, Ш,В)</option>
-                            <option value="circle">Окружность (X,Y, Радиус R)</option>
-                            <option value="dim">Размерная линия (X1,Y1 -> X2,Y2)</option>
-                            <option value="hatch">Зона штриховки/Разрез (X,Y, Ш,В)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Тип линии</label>
-                        <select id="prim-style">
-                            <option value="main">Основная толстая (0.8 мм)</option>
-                            <option value="thin">Тонкая (0.3 мм)</option>
-                            <option value="dashed">Штриховая - невидимая</option>
-                            <option value="axis">Штрихпунктирная - осевая</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="grid">
-                    <div class="form-group"><label>X1 (или Центр X)</label><input type="number" id="pr-x1" value="50"></div>
-                    <div class="form-group"><label>Y1 (или Центр Y)</label><input type="number" id="pr-y1" value="50"></div>
-                    <div class="form-group"><label>X2 / Ширина / R</label><input type="number" id="pr-x2" value="100"></div>
-                    <div class="form-group"><label>Y2 / Высота</label><input type="number" id="pr-y2" value="80"></div>
-                </div>
-                <button class="btn btn-sec" style="width:100%;" onclick="addPrimitive()">➕ Добавить примитив на чертеж</button>
-            </div>
-        </div>
-
-        <!-- ВКЛАДКА 4: ИИ GEMINI -->
-        <div id="tab-ai" class="tab-content">
-            <div class="card">
-                <h3>🔑 Настройка ключа Google Gemini API</h3>
-                <div class="form-group">
-                    <label>Ваш API Ключ (Хранится только на этом устройстве)</label>
-                    <input type="password" id="gemini-key" placeholder="AIzaSy..." oninput="saveApiKey()">
-                </div>
-                <div class="form-group">
-                    <label>Выберите доступную модель ИИ:</label>
-                    <select id="gemini-model">
-                        <option value="models/gemini-flash-latest">gemini-flash-latest (Универсальная быстрая)</option>
-                        <option value="models/gemini-pro-latest">gemini-pro-latest (Универсальная точная)</option>
-                        <option value="models/gemini-3.5-flash">gemini-3.5-flash</option>
-                        <option value="models/gemini-3.8-flash">gemini-3.8-flash</option>
-                        <option value="models/gemini-3-flash-preview">gemini-3-flash-preview</option>
-                        <option value="models/gemini-3.1-pro-preview">gemini-3.1-pro-preview</option>
-                        <option value="models/gemini-3.1-flash-lite">gemini-3.1-flash-lite</option>
-                        <option value="models/gemini-flash-lite-latest">gemini-flash-lite-latest</option>
-                        <option value="models/gemini-omni-1.2-flash">gemini-omni-1.2-flash</option>
-                        <option value="models/gemma-4-31b-it">gemma-4-31b-it</option>
-                        <option value="models/gemma-4-26b-a4b-it">gemma-4-26b-a4b-it</option>
-                    </select>
-                </div>
-                <button class="btn btn-sec" style="width:100%; font-size:12px;" onclick="fetchUserModels()">🔄 Проверить ключ и обновить список моделей</button>
-            </div>
-
-            <div class="card">
-                <h3>📸 Распознавание чертежа / эскиза (OCR)</h3>
-                <div class="form-group">
-                    <label>Загрузите фото детали, эскиз от руки или скриншот:</label>
-                    <input type="file" id="ai-image" accept="image/*">
-                </div>
-                <div class="form-group">
-                    <label>Текстовое описание или уточнение (необязательно):</label>
-                    <textarea id="ai-prompt" rows="3" placeholder="Например: Начерти втулку диаметром 60мм, отверстие 30мм, длина 80мм в разрезе. Или: Распознай деталь с картинки."></textarea>
-                </div>
-                <button class="btn" id="ai-btn" onclick="runGeminiOCR()">✨ Распознать и начертить через ИИ</button>
-                <div id="ai-status" style="margin-top:10px; font-size:13px; color:#38bdf8;"></div>
-            </div>
-        </div>
-
-        <!-- ВКЛАДКА 5: СПРАВКА / УЧЕБНИК -->
-        <div id="tab-help" class="tab-content">
-            <div class="card manual">
-                <h2>📘 Подробное руководство пользователя</h2>
-                <p>Добро пожаловать в <b>AI SVG Чертежник ГОСТ</b> — инженерное веб-приложение для автоматизированного создания чертежей форматов А4 и А3.</p>
-
-                <h2>1. Работа с листом и штампом (Основной надписью)</h2>
-                <p>Перейдите во вкладку <b>«📝 Штамп и Лист»</b>:</p>
-                <ul>
-                    <li><b>Формат и ориентация:</b> Выбирайте между А4 (210×297 мм) и А3 (297×420 мм). Доступна как книжная (вертикальная), так и альбомная (горизонтальная) компоновка. Штамп всегда автоматически привязывается к <b>правому нижнем углу</b> внутренней рамки.</li>
-                    <li><b>Регулировка ширины штампа (Сдвиг левого края):</b> По ГОСТ ширина штампа составляет 185 мм. Если вам нужно уменьшить штамп или сдвинуть его левую границу вправо — используйте ползунок <i>«Ширина штампа»</i>. Все внутренние графы сожмутся пропорционально!</li>
-                    <li><b>Изменение строк и сложности:</b> Вы можете добавлять или убирать верхние строки изменений (от 0 до 6), а также переключать вид штампа: от полного ГОСТ 2.104-2006 до мини-штампа.</li>
-                </ul>
-
-                <h2>2. Построение: 3 вида, Разрезы и Сечения</h2>
-                <p>Во вкладке <b>«🔧 Конструктор / База»</b> находятся инструменты автоматического черчения:</p>
-                <ul>
-                    <li><b>Три основных вида:</b> Строит проекционную связь: Главный вид (спереди), Вид сверху (под ним) и Вид слева (справа от главного) с осевыми и невидимыми (штриховыми) линиями.</li>
-                    <li><b>Разрез:</b> Заменяет главный вид на фронтальный разрез. Невидимые линии отверстий становятся видимыми (основными), а материал детали покрывается штриховкой под углом 45°.</li>
-                    <li><b>Сечение:</b> Показывает главный вид с линией секущей плоскости <code>А-А</code> и выносит рядом заштрихованную фигуру сечения.</li>
-                    <li><b>Пополнение библиотеки:</b> Настроив размеры детали или добавив свои примитивы, введите название в штампе и нажмите <i>«➕ Сохранить текущую в базу»</i>.</li>
-                </ul>
-
-                <h2>3. Ручное черчение примитивами</h2>
-                <p>В нижней части вкладки «Конструктор» вы можете добавлять отдельные элементы по координатам в миллиметрах (Линии, Окружности, Прямоугольники, Размерные линии со стрелками и Зоны штриховки).</p>
-
-                <h2>4. ИИ Распознавание (Google Gemini OCR)</h2>
-                <p>Приложение умеет читать бумажные эскизы, скриншоты и текстовые задания:</p>
-                <ol>
-                    <li>Вставьте ваш ключ API на вкладке <b>«🤖 ИИ Сканер»</b>.</li>
-                    <li>Выберите одну из ваших моделей (рекомендуется <code>gemini-flash-latest</code> или <code>gemini-3.5-flash</code>). Также можно нажать кнопку <i>«🔄 Проверить ключ и обновить список моделей»</i>.</li>
-                    <li>Сфотографируйте эскиз детали с размерами или напишите словами задание.</li>
-                    <li>ИИ извлечет параметры и передаст их математическому ядру программы для чистового черчения по ГОСТ.</li>
-                </ol>
-            </div>
-        </div>
-    </main>
-
-    <script src="app.js"></script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').catch(err => console.log('SW fail:', err));
-        }
-    </script>
+  <script src="./js/app.js" type="module"></script>
 </body>
 </html>
