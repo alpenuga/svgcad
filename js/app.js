@@ -85,10 +85,23 @@ document.querySelector('[data-view="ai"]').onclick = async () => {
     <div class="screen">
       <h2>📷 Распознать деталь</h2>
       <p style="font-size:13px;color:#666">
-        Сфотографируйте деталь на белом фоне, ровно сверху. Чем чётче контур — тем лучше.
+        Сфотографируйте деталь на белом фоне или выберите готовое фото/скриншот из галереи.
       </p>
-      <input type="file" id="aiFile" accept="image/*" capture="environment"
-             style="padding:10px;border:1px solid #cbd5e0;border-radius:6px;width:100%">
+      
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <!-- Кнопка для камеры (capture="environment") -->
+        <label class="primary" style="flex:1;padding:12px;border-radius:8px;background:#0b6cbf;color:#fff;text-align:center;font-weight:bold;cursor:pointer">
+          📸 Сделать фото
+          <input type="file" id="aiFileCamera" accept="image/*" capture="environment" style="display:none">
+        </label>
+
+        <!-- Кнопка для галереи (без capture) -->
+        <label style="flex:1;padding:12px;border-radius:8px;background:#f7fafc;border:1px solid #cbd5e0;text-align:center;font-weight:bold;cursor:pointer;color:#0b6cbf">
+          🖼️ Из галереи
+          <input type="file" id="aiFileGallery" accept="image/*" style="display:none">
+        </label>
+      </div>
+
       <div id="aiResult" style="margin-top:12px"></div>
       <button id="aiBuild" class="primary" style="display:none;margin-top:12px">
         Построить чертёж
@@ -97,26 +110,37 @@ document.querySelector('[data-view="ai"]').onclick = async () => {
 
   let parsed = null;
 
-  document.getElementById("aiFile").onchange = async e => {
+  // Единая функция обработки выбранного файла
+  async function handleFile(file) {
     const key = localStorage.getItem("geminiKey");
     const box = document.getElementById("aiResult");
-    if (!key) { box.innerHTML = '<p style="color:#c00">Сначала введите ключ в Настройках</p>'; return; }
-    const file = e.target.files[0];
+    
+    if (!key) { 
+      box.innerHTML = '<p style="color:#c00">Сначала введите ключ в Настройках</p>'; 
+      return; 
+    }
     if (!file) return;
+
     box.textContent = "🤖 Распознаю...";
     try {
       const b64 = await fileToBase64(file);
       parsed = await recognizeImage(key, b64, file.type);
+      
       box.innerHTML = `
         <p><b>${parsed.partName}</b> — ${parsed.overall.width}×${parsed.overall.height} мм</p>
         <p style="font-size:12px;color:#666">Уверенность: ${(parsed.confidence*100).toFixed(0)}%
         ${parsed.notes ? '<br>Заметки: '+parsed.notes : ''}</p>
         <pre>${JSON.stringify(parsed.primitives, null, 2)}</pre>`;
+      
       document.getElementById("aiBuild").style.display = "block";
     } catch (err) {
       box.innerHTML = `<p style="color:#c00">Ошибка: ${err.message}</p>`;
     }
-  };
+  }
+
+  // Привязываем оба input'а к одной функции
+  document.getElementById("aiFileCamera").onchange = (e) => handleFile(e.target.files[0]);
+  document.getElementById("aiFileGallery").onchange = (e) => handleFile(e.target.files[0]);
 
   document.getElementById("aiBuild").onclick = async () => {
     if (!parsed) return;
