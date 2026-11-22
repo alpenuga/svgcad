@@ -205,43 +205,11 @@ document.querySelector('[data-view="library"]').onclick = async () => {
   render();
 };
 
-document.querySelector('[data-view="stampSettings"]').onclick = () => {
+document.querySelector('[data-view="stampSettings"]').onclick = async () => {
   hideMenu();
-  const f = state.stamp.fields;
-  document.getElementById("app").innerHTML = `
-    <div class="screen">
-      <h2>🏛️ Настройка штампа</h2>
-      <p style="font-size:13px;color:#666">
-        Форма 1 по ГОСТ 2.104. Ширина 185 мм по умолчанию.
-        Если рамка упирается в левый край — уменьшите ширину.
-      </p>
-      <label style="display:block;margin:12px 0 4px">Ширина штампа (мм):</label>
-      <input id="stWidth" type="text" value="${state.stamp.width}" style="padding:10px;width:100px;border:1px solid #cbd5e0;border-radius:6px">
-      <label style="display:block;margin:12px 0 4px">Обозначение:</label>
-      <input id="stDesig" type="text" value="${f.designation}" placeholder="АБВГ.123456.789">
-      <label style="display:block;margin:12px 0 4px">Наименование:</label>
-      <input id="stTitle" type="text" value="${f.title}" placeholder="Кронштейн">
-      <label style="display:block;margin:12px 0 4px">Материал:</label>
-      <input id="stMaterial" type="text" value="${f.material}" placeholder="Сталь 20">
-      <label style="display:block;margin:12px 0 4px">Организация:</label>
-      <input id="stOrg" type="text" value="${f.organization}" placeholder="МБОУ СОШ №1">
-      <label style="display:block;margin:12px 0 4px">Разработал (ФИО):</label>
-      <input id="stAuthor" type="text" value="${f.author.name}">
-      <button id="stSave" class="primary" style="margin-top:16px">Сохранить</button>
-      <button id="stBack" style="background:#eee">← Назад к листу</button>
-    </div>`;
-
-  document.getElementById("stSave").onclick = () => {
-    const w = parseFloat(document.getElementById("stWidth").value);
-    if (w > 20 && w < 300) state.stamp.width = w;
-    state.stamp.fields.designation = document.getElementById("stDesig").value;
-    state.stamp.fields.title       = document.getElementById("stTitle").value;
-    state.stamp.fields.material    = document.getElementById("stMaterial").value;
-    state.stamp.fields.organization= document.getElementById("stOrg").value;
-    state.stamp.fields.author.name = document.getElementById("stAuthor").value;
+  const { renderStampEditor } = await import("./stamp-editor.js"); renderStampEditor(document.getElementById("app"), () => {
     showToolbarAndSheet();
-  };
-  document.getElementById("stBack").onclick = () => showToolbarAndSheet();
+  });
 };
 
 /* ------- Стартовая инициализация ------- */
