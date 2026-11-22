@@ -61,31 +61,26 @@ const SCHEMA = {
   required: ["partName", "overall", "primitives", "confidence"]
 };
 
-// --- ФУНКЦИЯ ОЧИСТКИ ---
+// --- ФУНКЦИЯ ОЧИСТКИ (Строгая) ---
 export function sanitizeAIPrimitives(primitives) {
   const clean = [];
   for (const p of primitives) {
     if (p.type === "line") {
-      const x1 = p.x1 || 0;
-      const y1 = p.y1 || 0;
-      const x2 = p.x2 !== undefined ? p.x2 : x1; 
-      const y2 = p.y2 !== undefined ? p.y2 : y1;
-      if (x1 !== x2 || y1 !== y2) {
-        clean.push({ ...p, x1, y1, x2, y2 });
+      // Если ИИ забыл хотя бы одну координату — выкидываем эту линию
+      if (p.x1 !== undefined && p.y1 !== undefined && p.x2 !== undefined && p.y2 !== undefined) {
+        if (p.x1 !== p.x2 || p.y1 !== p.y2) {
+          clean.push(p);
+        }
       }
     } 
     else if (p.type === "rect") {
-      const w = p.w !== undefined ? p.w : 10;
-      const h = p.h !== undefined ? p.h : (p.y2 ? p.y2 - (p.y || 0) : 10);
-      if (w > 0 && h > 0) {
-        clean.push({ ...p, w, h, x: p.x || 0, y: p.y || 0 });
+      // Если прямоугольник без ширины или высоты — пропускаем
+      if (p.w > 0 && p.h > 0) {
+        clean.push(p);
       }
     }
     else if (p.type === "circle") {
       if (p.r > 0) clean.push(p);
-    }
-    else {
-      clean.push(p);
     }
   }
   return clean;
