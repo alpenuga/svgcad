@@ -16,17 +16,19 @@ export async function checkModel(apiKey, modelId = "gemini-3.8-flash") {
   } catch { return false; }
 }
 
-const PROMPT = `Ты — инженер-конструктор. На изображении — деталь или её чертёж.
+const PROMPT = `Ты — инженер-конструктор. На изображении — деталь (возможно, изометрия).
+Твоя задача — построить её ГЛАВНЫЙ ВИД (вид спереди) в 2D.
 Верни ТОЛЬКО JSON по схеме. Никаких пояснений вне JSON.
 
-Правила:
-1. Размеры в миллиметрах. Есть размерные линии — используй их.
-   Нет размеров — оцени пропорционально, приняв ширину детали за 100 мм.
-2. Начало координат (0,0) — левый нижний угол детали, Y растёт вверх.
-3. primitives: контур детали (outline), отверстия (hole),
-   пазы (slot), радиусы скруглений (fillet), фаски (chamfer).
-4. Если что-то не видно — не выдумывай, добавь в notes.
-5. confidence: 0.9+ — чёткий чертёж; 0.6–0.9 — фото с тенями; <0.6 — плохо.`;
+ПРАВИЛА:
+1. Размеры в миллиметрах. Начало координат (0,0) — левый нижний угол.
+2. ВАЖНО: Для каждого типа примитива заполняй ВСЕ поля!
+   - Для "line": ОБЯЗАТЕЛЬНО x1, y1, x2, y2.
+   - Для "circle": ОБЯЗАТЕЛЬНО cx, cy, r.
+   - Для "rect": ОБЯЗАТЕЛЬНО x, y, w, h.
+3. Если контур сложный — разбей его на последовательность линий (line).
+4. Не добавляй размерные линии и центровые в primitives, только сам контур (outline).
+5. Если что-то не видно — не выдумывай, добавь в notes.`;
 
 const SCHEMA = {
   type: "object",
@@ -34,10 +36,7 @@ const SCHEMA = {
     partName: { type: "string" },
     overall: {
       type: "object",
-      properties: {
-        width:  { type: "number" },
-        height: { type: "number" }
-      },
+      properties: { width: { type: "number" }, height: { type: "number" } },
       required: ["width", "height"]
     },
     primitives: {
@@ -50,9 +49,8 @@ const SCHEMA = {
           x1: { type: "number" }, y1: { type: "number" },
           x2: { type: "number" }, y2: { type: "number" },
           cx: { type: "number" }, cy: { type: "number" }, r: { type: "number" },
-          x:  { type: "number" }, y:  { type: "number" },
-          w:  { type: "number" }, h:  { type: "number" },
-          startAngle: { type: "number" }, endAngle: { type: "number" }
+          x: { type: "number" }, y: { type: "number" },
+          w: { type: "number" }, h: { type: "number" }
         },
         required: ["type", "role"]
       }
@@ -62,6 +60,36 @@ const SCHEMA = {
   },
   required: ["partName", "overall", "primitives", "confidence"]
 };
+
+// --- НОВАЯ ФУНКЦИЯ ОЧИСТКИ ---
+export function sanitizeAIPrimitives(primitives) {
+  const clean = [];
+  for (const p of primitives) {
+    if (p.type === "line") {
+      const x1 = p.x1 || 0;
+      const y1 = p.y1 || 0;
+      const x2 = p.x2 !== undefined ? p.x2 : x1; 
+      const y2 = p.y2 !== undefined ? p.y2 : y1;
+      if (x1 !== x2 || y1 !== y2) {
+        clean.push({ ...p, x1, y1, x2, y2 });
+      }
+    } 
+    else if (p.type === "rect") {
+      const w = p.w !== undefined ? p.w : 10;
+      const h = p.h !== undefined ? p.h : (p.y2 ? p.y2 - (p.y || 0) : 10);
+      if (w > 0 && h > 0) {
+        clean.push({ ...p, w, h, x: p.x || 0, y: p.y || 0 });
+      }
+    }
+    else if (p.type === "circle") {
+      if (p.r > 0) clean.push(p);
+    }
+    else {
+      clean.push(p);
+    }
+  }
+  return clean;
+}
 
 export async function recognizeImage(apiKey, base64, mimeType) {
   const body = {
@@ -101,7 +129,6 @@ export async function recognizeImage(apiKey, base64, mimeType) {
   throw new Error("Все модели недоступны: " + lastError);
 }
 
-// конвертация изображения в base64 (без префикса data:image/...,)
 export function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -109,12 +136,4 @@ export function fileToBase64(file) {
     r.onerror = reject;
     r.readAsDataURL(file);
   });
-}
-
-// поворот Y — если ИИ отдаёт координаты с началом в левом ВЕРХНЕМ углу
-// (в промпте указано «Y растёт вверх», но модель иногда путает).
-// Вспомогательная нормализация:
-export function normalizeAiResult(parsed, pageH = null) {
-  // Не трогаем — пусть пользователь видит как есть.
-  return parsed;
 }
