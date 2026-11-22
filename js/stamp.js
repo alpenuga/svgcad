@@ -50,25 +50,36 @@ export function defaultGostTemplate(width = 185, height = 55) {
   return { rows, cols, cells };
 }
 
-/* ---------- Школьный упрощённый шаблон ---------- */
-export function defaultSchoolTemplate(width = 185, height = 55) {
-  const rows = [14, 12, 12, 17];   // сумма 55
-  const cols = [55, 55, 40, 35];   // сумма 185
+/* ---------- Школьный упрощённый шаблон  ---------- */
+export function defaultSchoolTemplate(width = 145, height = 30) {
+  const rows = [11, 11, 8]; 
+  const cols = [25, 30, 15, 35, 20, 20]; // Сумма = 145
+  
   const cells = [
-    // Название
-    { r: 0, c: 0, rs: 1, cs: 4, text: "Название детали", fontSize: 7, align: "center", bold: true },
-    // Разработал
-    { r: 1, c: 0, rs: 1, cs: 2, text: "Разработал:", fontSize: 3.5, align: "left", bold: false },
-    { r: 1, c: 2, rs: 1, cs: 2, text: "",            fontSize: 3.5, align: "left", bold: false },
-    // Материал
-    { r: 2, c: 0, rs: 1, cs: 2, text: "Материал:",   fontSize: 3.5, align: "left", bold: false },
-    { r: 2, c: 2, rs: 1, cs: 2, text: "",            fontSize: 3.5, align: "left", bold: false },
-    // Класс / Масштаб
-    { r: 3, c: 0, rs: 1, cs: 1, text: "Класс:",      fontSize: 3.5, align: "left", bold: false },
-    { r: 3, c: 1, rs: 1, cs: 1, text: "",            fontSize: 3.5, align: "left", bold: false },
-    { r: 3, c: 2, rs: 1, cs: 1, text: "Масштаб:",    fontSize: 3.5, align: "left", bold: false },
-    { r: 3, c: 3, rs: 1, cs: 1, text: "",            fontSize: 3.5, align: "left", bold: false }
+    // 1 строка
+    { r: 0, c: 0, rs: 1, cs: 1, text: "Чертил", fontSize: 3.5, align: "center", bold: true },
+    { r: 0, c: 1, rs: 1, cs: 1, text: "Иванов М", fontSize: 3.5, align: "center", bold: true },
+    { r: 0, c: 2, rs: 1, cs: 1, text: "10.10.90", fontSize: 3, align: "center", bold: true },
+    
+    // 2 строка
+    { r: 1, c: 0, rs: 1, cs: 1, text: "Проверил", fontSize: 3.5, align: "center", bold: true },
+    { r: 1, c: 1, rs: 1, cs: 1, text: "", fontSize: 3.5, align: "center", bold: false },
+    { r: 1, c: 2, rs: 1, cs: 1, text: "", fontSize: 3, align: "center", bold: false },
+    
+    // Правая часть (Объединяем 1 и 2 строку, а также 3 последних столбца)
+    { r: 0, c: 3, rs: 2, cs: 3, text: "Кольцо", fontSize: 8, align: "center", bold: true },
+    
+    // 3 строка (нижняя)
+    { r: 2, c: 0, rs: 1, cs: 1, text: "Школа", fontSize: 3.5, align: "center", bold: true },
+    { r: 2, c: 1, rs: 1, cs: 1, text: "класс", fontSize: 3.5, align: "center", bold: true },
+    { r: 2, c: 2, rs: 1, cs: 1, text: "", fontSize: 3, align: "center", bold: false },
+    
+    // Нижняя правая часть (Материал, Масштаб, Номер)
+    { r: 2, c: 3, rs: 1, cs: 1, text: "Резина", fontSize: 3.5, align: "center", bold: true },
+    { r: 2, c: 4, rs: 1, cs: 1, text: "1:1", fontSize: 3.5, align: "center", bold: true },
+    { r: 2, c: 5, rs: 1, cs: 1, text: "№ 3", fontSize: 3.5, align: "center", bold: true }
   ];
+  
   return { rows, cols, cells };
 }
 
