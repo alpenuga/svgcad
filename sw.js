@@ -1,4 +1,4 @@
-const CACHE = "cad-v6";
+const CACHE = "cad-v7";
 const ASSETS = [
   "./", "./index.html", "./manifest.json",
   "./assets/icons/icon.svg", 
