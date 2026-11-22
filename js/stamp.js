@@ -50,7 +50,7 @@ export function defaultGostTemplate(width = 185, height = 55) {
   return { rows, cols, cells };
 }
 
-/* ---------- Школьный упрощённый шаблон  ---------- */
+/* ---------- Школьный шаблон (145x30, 3 строки) ---------- */
 export function defaultSchoolTemplate(width = 145, height = 30) {
   const rows = [11, 11, 8]; 
   const cols = [25, 30, 15, 35, 20, 20]; // Сумма = 145
@@ -74,7 +74,7 @@ export function defaultSchoolTemplate(width = 145, height = 30) {
     { r: 2, c: 1, rs: 1, cs: 1, text: "класс", fontSize: 3.5, align: "center", bold: true },
     { r: 2, c: 2, rs: 1, cs: 1, text: "", fontSize: 3, align: "center", bold: false },
     
-    // Нижняя правая часть (Материал, Масштаб, Номер)
+    // Нижняя правая часть
     { r: 2, c: 3, rs: 1, cs: 1, text: "Резина", fontSize: 3.5, align: "center", bold: true },
     { r: 2, c: 4, rs: 1, cs: 1, text: "1:1", fontSize: 3.5, align: "center", bold: true },
     { r: 2, c: 5, rs: 1, cs: 1, text: "№ 3", fontSize: 3.5, align: "center", bold: true }
