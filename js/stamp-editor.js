@@ -217,10 +217,17 @@ export function renderStampEditor(container, onDone) {
   });
 
   document.getElementById("tplGost").onclick = () => {
-    state.stamp.grid = defaultGostTemplate(state.stamp.width, 55);
-    selected.clear();
-    rerender();
-  };
+  state.stamp.width = 185;   // Возвращаем стандартную ширину
+  state.stamp.height = 55;   // Возвращаем стандартную высоту
+  
+  // Обновляем поле ввода ширины на экране
+  const widthInput = document.getElementById("stWidth");
+  if (widthInput) widthInput.value = 185;
+  
+  state.stamp.grid = defaultGostTemplate(state.stamp.width, 55);
+  selected.clear();
+  rerender();
+};
   document.getElementById("tplSchool").onclick = () => {
   state.stamp.width = 145;  // Задаем точную ширину
   state.stamp.height = 30;  // Задаем точную высоту
