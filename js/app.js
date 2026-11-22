@@ -1,7 +1,9 @@
 // js/app.js — точка входа, меню, экраны
 import { state, renderSheet, addPrimitive, PAPERS } from "./core.js";
 import { buildToolbarHtml, bindToolbar } from "./toolbar.js";
-import "./stamp.js";  // регистрирует window.__renderStamp
+import "./stamp.js";
+import { loadStamp } from "./stamp.js";
+loadStamp();   // загружаем сохранённый штамп или ГОСТ по умолчанию
 
 // Регистрируем Service Worker
 if ("serviceWorker" in navigator) {
