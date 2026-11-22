@@ -1,107 +1,130 @@
-// js/stamp.js — ГОСТ 2.104, форма 1 с адаптивной левой границей
+// js/stamp.js — штамп как редактируемая сетка
 import { el, state, PAPERS, FRAME } from "./core.js";
 
+const STORAGE_KEY = "cadStampV2";
+
+export function loadStamp() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const p = JSON.parse(raw);
+      state.stamp.width = p.width || 185;
+      state.stamp.grid  = p.grid  || defaultGostTemplate(185, 55);
+    } else {
+      state.stamp.width = 185;
+      state.stamp.grid  = defaultGostTemplate(185, 55);
+    }
+  } catch {
+    state.stamp.width = 185;
+    state.stamp.grid  = defaultGostTemplate(185, 55);
+  }
+}
+
+export function saveStamp() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    width: state.stamp.width,
+    grid:  state.stamp.grid
+  }));
+}
+
+/* ---------- Шаблон ГОСТ 2.104 (форма 1) ---------- */
+export function defaultGostTemplate(width = 185, height = 55) {
+  const rowH = height / 5;
+  const rows = [rowH, rowH, rowH, rowH, rowH];
+  const cols = [7, 23, 15, 15, 62, 21, 21, 21];  // сумма 185
+  const cells = [];
+  const labels = ["Разраб.", "Пров.", "Т.контр.", "Н.контр.", "Утв."];
+  for (let r = 0; r < 5; r++) {
+    cells.push({ r, c: 0, rs: 1, cs: 1, text: labels[r], fontSize: 2.4, align: "center", bold: false });
+    cells.push({ r, c: 1, rs: 1, cs: 1, text: "", fontSize: 2.4, align: "left", bold: false });
+    cells.push({ r, c: 2, rs: 1, cs: 1, text: "", fontSize: 2.4, align: "left", bold: false });
+    cells.push({ r, c: 3, rs: 1, cs: 1, text: "", fontSize: 2.4, align: "left", bold: false });
+  }
+  cells.push({ r: 0, c: 4, rs: 1, cs: 1, text: "Лит.",     fontSize: 2.2, align: "center", bold: false });
+  cells.push({ r: 0, c: 5, rs: 1, cs: 1, text: "Масса",    fontSize: 2.2, align: "center", bold: false });
+  cells.push({ r: 0, c: 6, rs: 1, cs: 1, text: "Масштаб",  fontSize: 2.2, align: "center", bold: false });
+  cells.push({ r: 1, c: 4, rs: 1, cs: 3, text: "", fontSize: 5,   align: "center", bold: false });
+  cells.push({ r: 2, c: 4, rs: 1, cs: 3, text: "", fontSize: 4.5, align: "center", bold: false });
+  cells.push({ r: 3, c: 4, rs: 1, cs: 3, text: "", fontSize: 2.8, align: "left",   bold: false });
+  cells.push({ r: 4, c: 4, rs: 1, cs: 3, text: "", fontSize: 2.8, align: "center", bold: false });
+  return { rows, cols, cells };
+}
+
+/* ---------- Школьный упрощённый шаблон ---------- */
+export function defaultSchoolTemplate(width = 185, height = 55) {
+  const rows = [14, 12, 12, 17];   // сумма 55
+  const cols = [55, 55, 40, 35];   // сумма 185
+  const cells = [
+    // Название
+    { r: 0, c: 0, rs: 1, cs: 4, text: "Название детали", fontSize: 7, align: "center", bold: true },
+    // Разработал
+    { r: 1, c: 0, rs: 1, cs: 2, text: "Разработал:", fontSize: 3.5, align: "left", bold: false },
+    { r: 1, c: 2, rs: 1, cs: 2, text: "",            fontSize: 3.5, align: "left", bold: false },
+    // Материал
+    { r: 2, c: 0, rs: 1, cs: 2, text: "Материал:",   fontSize: 3.5, align: "left", bold: false },
+    { r: 2, c: 2, rs: 1, cs: 2, text: "",            fontSize: 3.5, align: "left", bold: false },
+    // Класс / Масштаб
+    { r: 3, c: 0, rs: 1, cs: 1, text: "Класс:",      fontSize: 3.5, align: "left", bold: false },
+    { r: 3, c: 1, rs: 1, cs: 1, text: "",            fontSize: 3.5, align: "left", bold: false },
+    { r: 3, c: 2, rs: 1, cs: 1, text: "Масштаб:",    fontSize: 3.5, align: "left", bold: false },
+    { r: 3, c: 3, rs: 1, cs: 1, text: "",            fontSize: 3.5, align: "left", bold: false }
+  ];
+  return { rows, cols, cells };
+}
+
+/* ---------- Отрисовка ---------- */
 export function renderStamp(svg) {
+  if (!state.stamp.grid) return;
   const { w, h } = PAPERS[state.paper];
   const maxW = w - FRAME.left - FRAME.right;
   const stampW = Math.min(state.stamp.width, maxW);
-  const stampH = state.stamp.height;
+  const grid = state.stamp.grid;
+
+  const totalCols = grid.cols.reduce((a, b) => a + b, 0) || 1;
+  const totalRows = grid.rows.reduce((a, b) => a + b, 0) || 1;
+  const scaleX = stampW / totalCols;
+  const scaleY = state.stamp.height / totalRows;
+
   const x0 = w - FRAME.right - stampW;
-  const y0 = h - FRAME.bottom - stampH;
+  const y0 = h - FRAME.bottom - state.stamp.height;
 
   const g = el("g", { id: "stamp" });
   svg.appendChild(g);
 
-  g.appendChild(el("rect", {
-    x: x0, y: y0, width: stampW, height: stampH,
-    fill: "none", stroke: "#000", "stroke-width": 0.7
-  }));
+  // Позиции
+  const colX = [0];
+  for (let i = 0; i < grid.cols.length; i++) colX.push(colX[i] + grid.cols[i] * scaleX);
+  const rowY = [0];
+  for (let i = 0; i < grid.rows.length; i++) rowY.push(rowY[i] + grid.rows[i] * scaleY);
 
-  const rowH = stampH / 5;
-  const colW = 7, nameW = 23, sigW = 15, dateW = 15;
-  const leftW = colW + nameW + sigW + dateW;
-  const splitX = x0 + leftW;
+  for (const cell of grid.cells) {
+    const c0 = cell.c, c1 = cell.c + (cell.cs || 1);
+    const r0 = cell.r, r1 = cell.r + (cell.rs || 1);
+    const x  = x0 + colX[c0];
+    const y  = y0 + rowY[r0];
+    const cw = colX[c1] - colX[c0];
+    const ch = rowY[r1] - rowY[r0];
 
-  // Разделитель слева / справа
-  g.appendChild(el("line", {
-    x1: splitX, y1: y0, x2: splitX, y2: y0 + stampH,
-    stroke: "#000", "stroke-width": 0.7
-  }));
-
-  // Горизонтали в левой части
-  for (let i = 1; i < 5; i++) {
-    g.appendChild(el("line", {
-      x1: x0, y1: y0 + i * rowH, x2: splitX, y2: y0 + i * rowH,
-      stroke: "#000", "stroke-width": 0.4
+    g.appendChild(el("rect", {
+      x, y, width: cw, height: ch,
+      fill: "none", stroke: "#000", "stroke-width": 0.5
     }));
+
+    if (cell.text) {
+      const fs = cell.fontSize || 2.5;
+      let tx = x + 1, anchor = "start";
+      if (cell.align === "center") { tx = x + cw / 2; anchor = "middle"; }
+      else if (cell.align === "right") { tx = x + cw - 1; anchor = "end"; }
+      const t = el("text", {
+        x: tx, y: y + ch / 2 + fs * 0.35,
+        "font-size": fs, "font-family": "Arial, sans-serif",
+        "text-anchor": anchor,
+        "font-weight": cell.bold ? "bold" : "normal"
+      });
+      t.textContent = cell.text;
+      g.appendChild(t);
+    }
   }
-
-  // Вертикали колонок
-  const colXs = [x0 + colW, x0 + colW + nameW, x0 + colW + nameW + sigW];
-  for (const cx of colXs) {
-    g.appendChild(el("line", {
-      x1: cx, y1: y0, x2: cx, y2: y0 + stampH,
-      stroke: "#000", "stroke-width": 0.4
-    }));
-  }
-
-  // Заголовки строк
-  const rowLabels = ["Разраб.", "Пров.", "Т.контр.", "Н.контр.", "Утв."];
-  const rowKeys = ["author", "checker", "tcontrol", "ncontrol", "approver"];
-  rowLabels.forEach((label, i) => {
-    g.appendChild(textAt(x0 + colW / 2, y0 + i * rowH + rowH / 2 + 1.2, label, 2.2, "middle"));
-    const f = state.stamp.fields[rowKeys[i]] || {};
-    if (f.name) g.appendChild(textAt(x0 + colW + 1, y0 + i * rowH + 7, f.name, 2.2));
-    if (f.date) g.appendChild(textAt(x0 + colW + nameW + sigW + 1, y0 + i * rowH + 7, f.date, 2.2));
-  });
-
-  // Правая часть
-  const rx = splitX;
-  const rightW = stampW - leftW;
-  const f = state.stamp.fields;
-
-  // Строка Лит./Масса/Масштаб (15 мм)
-  g.appendChild(el("line", {
-    x1: rx, y1: y0 + 15, x2: x0 + stampW, y2: y0 + 15,
-    stroke: "#000", "stroke-width": 0.4
-  }));
-  const blockHeaders = ["Лит.", "Масса", "Масштаб"];
-  blockHeaders.forEach((label, i) => {
-    const cw = rightW / 3;
-    if (i > 0) g.appendChild(el("line", {
-      x1: rx + i * cw, y1: y0, x2: rx + i * cw, y2: y0 + 15,
-      stroke: "#000", "stroke-width": 0.4
-    }));
-    g.appendChild(textAt(rx + i * cw + cw / 2, y0 + 12, label, 2, "middle"));
-  });
-
-  // Средний блок: обозначение + наименование (25 мм)
-  g.appendChild(el("line", {
-    x1: rx, y1: y0 + 40, x2: x0 + stampW, y2: y0 + 40,
-    stroke: "#000", "stroke-width": 0.4
-  }));
-  if (f.designation) {
-    g.appendChild(textAt(rx + rightW / 2, y0 + 22, f.designation, 4.5, "middle"));
-  }
-  if (f.title) {
-    g.appendChild(textAt(rx + rightW / 2, y0 + 34, f.title, 4, "middle"));
-  }
-
-  // Нижний блок (15 мм): материал + организация
-  if (f.material) {
-    g.appendChild(textAt(rx + 2, y0 + 48, "Материал: " + f.material, 2.5));
-  }
-  if (f.organization) {
-    g.appendChild(textAt(rx + rightW / 2, y0 + 54, f.organization, 2.8, "middle"));
-  }
-}
-
-function textAt(x, y, text, size, anchor = "start") {
-  const t = el("text", {
-    x, y, "font-size": size, "font-family": "Arial, sans-serif", "text-anchor": anchor
-  });
-  t.textContent = text;
-  return t;
 }
 
 if (typeof window !== "undefined") {
