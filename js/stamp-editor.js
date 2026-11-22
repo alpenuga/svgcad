@@ -222,10 +222,13 @@ export function renderStampEditor(container, onDone) {
     rerender();
   };
   document.getElementById("tplSchool").onclick = () => {
-    state.stamp.grid = defaultSchoolTemplate(state.stamp.width, 55);
-    selected.clear();
-    rerender();
-  };
+  state.stamp.width = 145;  // Задаем точную ширину
+  state.stamp.height = 30;  // Задаем точную высоту
+  document.getElementById("stWidth").value = 145; // Обновляем поле ввода
+  state.stamp.grid = defaultSchoolTemplate(145, 30);
+  selected.clear();
+  rerender();
+};
   document.getElementById("tplClear").onclick = () => {
     if (!confirm("Очистить текст всех ячеек?")) return;
     state.stamp.grid.cells.forEach(cell => cell.text = "");
