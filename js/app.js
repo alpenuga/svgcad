@@ -79,7 +79,8 @@ document.querySelector('[data-view="settings"]').onclick = async () => {
 
 document.querySelector('[data-view="ai"]').onclick = async () => {
   hideMenu();
-  const { recognizeImage, fileToBase64 } = await import("./ai-parser.js");
+  // Добавили sanitizeAIPrimitives в импорт
+  const { recognizeImage, fileToBase64, sanitizeAIPrimitives } = await import("./ai-parser.js");
 
   const app = document.getElementById("app");
   app.innerHTML = `
@@ -90,13 +91,11 @@ document.querySelector('[data-view="ai"]').onclick = async () => {
       </p>
       
       <div style="display:flex;gap:8px;margin-bottom:12px">
-        <!-- Кнопка для камеры (capture="environment") -->
         <label class="primary" style="flex:1;padding:12px;border-radius:8px;background:#0b6cbf;color:#fff;text-align:center;font-weight:bold;cursor:pointer">
           📸 Сделать фото
           <input type="file" id="aiFileCamera" accept="image/*" capture="environment" style="display:none">
         </label>
 
-        <!-- Кнопка для галереи (без capture) -->
         <label style="flex:1;padding:12px;border-radius:8px;background:#f7fafc;border:1px solid #cbd5e0;text-align:center;font-weight:bold;cursor:pointer;color:#0b6cbf">
           🖼️ Из галереи
           <input type="file" id="aiFileGallery" accept="image/*" style="display:none">
@@ -127,6 +126,7 @@ document.querySelector('[data-view="ai"]').onclick = async () => {
       const b64 = await fileToBase64(file);
       parsed = await recognizeImage(key, b64, file.type);
       
+      // ВОТ ЗДЕСЬ ВЫВОДИТСЯ РЕЗУЛЬТАТ
       box.innerHTML = `
         <p><b>${parsed.partName}</b> — ${parsed.overall.width}×${parsed.overall.height} мм</p>
         <p style="font-size:12px;color:#666">Уверенность: ${(parsed.confidence*100).toFixed(0)}%
@@ -143,10 +143,15 @@ document.querySelector('[data-view="ai"]').onclick = async () => {
   document.getElementById("aiFileCamera").onchange = (e) => handleFile(e.target.files[0]);
   document.getElementById("aiFileGallery").onchange = (e) => handleFile(e.target.files[0]);
 
+  // А ВОТ ЗДЕСЬ МЫ СТРОИМ (применяем очистку)
   document.getElementById("aiBuild").onclick = async () => {
     if (!parsed) return;
     state.primitives = [];
-    parsed.primitives.forEach(p => addPrimitive({ ...p }));
+    
+    // ИСПОЛЬЗУЕМ ОЧИСТКУ ЗДЕСЬ
+    const cleanPrimitives = sanitizeAIPrimitives(parsed.primitives);
+    
+    cleanPrimitives.forEach(p => addPrimitive({ ...p }));
     const m = await import("./toolbar.js");
     document.getElementById("app").innerHTML = m.buildToolbarHtml();
     m.bindToolbar();
