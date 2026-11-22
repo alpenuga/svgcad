@@ -1,12 +1,11 @@
 // js/app.js — точка входа, меню, экраны
 import { state, renderSheet, addPrimitive, PAPERS } from "./core.js";
 import { buildToolbarHtml, bindToolbar } from "./toolbar.js";
-import { recognizeImage, fileToBase64, sanitizeAIPrimitives } from "./ai-parser.js"; // добавили sanitizeAIPrimitives
 import "./stamp.js";
 import { loadStamp } from "./stamp.js";
-loadStamp();   // загружаем сохранённый штамп или ГОСТ по умолчанию
 
-// Регистрируем Service Worker
+loadStamp();   // Загружаем сохранённый штамп или ГОСТ по умолчанию
+
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./sw.js").catch(() => {});
 }
@@ -126,7 +125,6 @@ document.querySelector('[data-view="ai"]').onclick = async () => {
       const b64 = await fileToBase64(file);
       parsed = await recognizeImage(key, b64, file.type);
       
-      // ВОТ ЗДЕСЬ ВЫВОДИТСЯ РЕЗУЛЬТАТ
       box.innerHTML = `
         <p><b>${parsed.partName}</b> — ${parsed.overall.width}×${parsed.overall.height} мм</p>
         <p style="font-size:12px;color:#666">Уверенность: ${(parsed.confidence*100).toFixed(0)}%
@@ -143,12 +141,11 @@ document.querySelector('[data-view="ai"]').onclick = async () => {
   document.getElementById("aiFileCamera").onchange = (e) => handleFile(e.target.files[0]);
   document.getElementById("aiFileGallery").onchange = (e) => handleFile(e.target.files[0]);
 
-  // А ВОТ ЗДЕСЬ МЫ СТРОИМ (применяем очистку)
+  // Строим чертёж с очисткой
   document.getElementById("aiBuild").onclick = async () => {
     if (!parsed) return;
     state.primitives = [];
     
-    // ИСПОЛЬЗУЕМ ОЧИСТКУ ЗДЕСЬ
     const cleanPrimitives = sanitizeAIPrimitives(parsed.primitives);
     
     cleanPrimitives.forEach(p => addPrimitive({ ...p }));
@@ -177,7 +174,6 @@ document.querySelector('[data-view="views"]').onclick = async () => {
   document.getElementById("btn3v").onclick = async () => {
     const m = await import("./projections.js");
     m.buildThreeViews();
-    // Перерисовать лист и вернуть кнопки
     showToolbarAndSheet();
   };
   document.getElementById("btnSection").onclick = async () => {
@@ -237,7 +233,9 @@ document.querySelector('[data-view="library"]').onclick = async () => {
 
 document.querySelector('[data-view="stampSettings"]').onclick = async () => {
   hideMenu();
-  const { renderStampEditor } = await import("./stamp-editor.js"); renderStampEditor(document.getElementById("app"), () => {
+  const { renderStampEditor } = await import("./stamp-editor.js");
+
+  renderStampEditor(document.getElementById("app"), () => {
     showToolbarAndSheet();
   });
 };
