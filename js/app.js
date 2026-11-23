@@ -66,15 +66,26 @@ document.querySelector('[data-view="settings"]').onclick = async () => {
       return;
     }
     localStorage.setItem("geminiKey", k);
-    document.getElementById("keyStatus").textContent = "Проверка...";
+      document.getElementById("saveKey").onclick = async () => {
+    const k = document.getElementById("keyInput").value.trim();
+    if (!k) return;
+    localStorage.setItem("geminiKey", k);
+    
+    const status = document.getElementById("keyStatus");
+    status.textContent = "Проверка...";
+    status.style.color = "#666";
+    
     const { checkModel } = await import("./ai-parser.js");
-    const ok = await checkModel(k, "gemini-3.8-flash");
-    document.getElementById("keyStatus").textContent = ok
-      ? "✅ Ключ работает, модель gemini-3.8-flash доступна"
-      : "❌ Ключ не прошёл проверку (или модель недоступна)";
-    document.getElementById("keyStatus").style.color = ok ? "#080" : "#c00";
+    const result = await checkModel(k, "gemini-3.8-flash");
+    
+    if (result.ok) {
+      status.textContent = "✅ Ключ работает, модель доступна";
+      status.style.color = "#080";
+    } else {
+      status.textContent = "❌ Ошибка: " + result.error;
+      status.style.color = "#c00";
+    }
   };
-};
 
 document.querySelector('[data-view="ai"]').onclick = async () => {
   hideMenu();
