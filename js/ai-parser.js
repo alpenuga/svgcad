@@ -28,19 +28,29 @@ export async function checkModel(apiKey, modelId = "gemini-3.8-flash") {
 }
 
 const PROMPT = `Ты — инженер-конструктор. На изображении — 3D-деталь (изометрия).
-Построй её ГЛАВНЫЙ ВИД (вид спереди) в 2D.
-Верни ТОЛЬКО JSON по схеме. Никаких пояснений вне JSON.
+Твоя задача — разбить её на простые 2D прямоугольники (вид спереди).
+Верни ТОЛЬКО JSON по схеме. Никаких пояснений.
 
 ПРАВИЛА:
 1. Размеры в миллиметрах. (0,0) — левый нижний угол.
-2. СТРОГОЕ ПРАВИЛО: Строй деталь ИСКЛЮЧИТЕЛЬНО из прямоугольников ("rect")!
-   НЕ ИСПОЛЬЗУЙ линии ("line") для прямых углов. Деталь — это набор блоков.
-3. Для каждого прямоугольника ОБЯЗАТЕЛЬНО указывай: x (отступ слева), y (отступ снизу), w (ширина), h (высота).
-   Пример ступенчатой детали 60x40: это несколько прямоугольников, наложенных друг на друга (основание 60x20, выступы сверху).
-4. Линии ("line") используй ТОЛЬКО для наклонных контуров (фаски). 
-   Если используешь линию, ОБЯЗАТЕЛЬНО указывай x1, y1, x2, y2.
-5. Для отверстий используй "circle" (cx, cy, r).
-6. Не добавляй размерные линии, только контур (outline).`;
+2. СТРОГОЕ ПРАВИЛО: Используй ИСКЛЮЧИТЕЛЬНО прямоугольники ("rect")!
+   Не используй линии ("line") для контуров. 
+3. Для каждого прямоугольника указывай: x, y, w (ширина), h (высота).
+4. Для отверстий используй "circle" (cx, cy, r).
+
+ПРИМЕР: Если деталь 60x40 имеет основание высотой 20 и два выступа шириной 20 и 10.
+Твой ответ:
+{
+  "partName": "Ступенчатая деталь",
+  "overall": { "width": 60, "height": 40 },
+  "primitives": [
+    { "type": "rect", "role": "outline", "x": 0, "y": 0, "w": 60, "h": 20 },
+    { "type": "rect", "role": "outline", "x": 0, "y": 20, "w": 20, "h": 20 },
+    { "type": "rect", "role": "outline", "x": 40, "y": 20, "w": 10, "h": 20 }
+  ],
+  "confidence": 0.9,
+  "notes": ""
+}`;
 
 const SCHEMA = {
   type: "object",
@@ -56,13 +66,12 @@ const SCHEMA = {
       items: {
         type: "object",
         properties: {
-          type: { type: "string", enum: ["line", "circle", "rect"] },
+          type: { type: "string", enum: ["rect", "circle"] }, // Убрали line!
           role: { type: "string", enum: ["outline", "hole"] },
           x: { type: "number" }, y: { type: "number" }, w: { type: "number" }, h: { type: "number" },
-          x1: { type: "number" }, y1: { type: "number" }, x2: { type: "number" }, y2: { type: "number" },
           cx: { type: "number" }, cy: { type: "number" }, r: { type: "number" }
         },
-        required: ["type", "role"]
+        required: ["type", "role", "x", "y", "w", "h"] // Заставили ИИ ВСЕГДА писать координаты
       }
     },
     confidence: { type: "number" },
@@ -111,11 +120,11 @@ export async function recognizeImage(apiKey, base64, mimeType) {
         { inline_data: { mime_type: mimeType, data: base64 } }
       ]
     }],
-    generationConfig: {
+        generationConfig: {
       temperature: 0.1,
       responseMimeType: "application/json",
-      responseSchema: SCHEMA,
-      thinkingConfig: { thinkingBudget: 1024 }
+      responseSchema: SCHEMA
+      // Мы убрали thinkingConfig, чтобы ИИ не "зависал" над переводом 3D в 2D
     }
   };
 
