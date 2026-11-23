@@ -1,4 +1,4 @@
-const CACHE = "cad-v20";
+const CACHE = "cad-v21";
 const ASSETS = [
   "./", "./index.html", "./manifest.json",
   "./assets/icons/icon.svg", 
@@ -7,6 +7,7 @@ const ASSETS = [
   "./js/stamp.js",
   "./js/stamp-editor.js",
   "./js/toolbar.js",
+  "./js/interact.js",
   "./js/projections.js",
   "./js/ai-parser.js",
   "./js/library.js",
