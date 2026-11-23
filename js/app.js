@@ -49,7 +49,7 @@ document.querySelector('[data-view="settings"]').onclick = async () => {
         кроме Google при распознавании.
       </p>
       <label style="display:block;margin:12px 0 4px">Gemini API Key:</label>
-      <input id="keyInput" type="password" placeholder="AIza...">
+      <input id="keyInput" type="password" placeholder="AIza... или AQ...">
       <button id="saveKey" class="primary" style="margin-top:12px">Сохранить и проверить</button>
       <p id="keyStatus" style="color:#666;font-size:13px;margin-top:8px"></p>
       <p style="font-size:12px;color:#999;margin-top:24px">
@@ -59,14 +59,8 @@ document.querySelector('[data-view="settings"]').onclick = async () => {
       </p>
     </div>`;
   document.getElementById("keyInput").value = localStorage.getItem("geminiKey") || "";
+  
   document.getElementById("saveKey").onclick = async () => {
-    const k = document.getElementById("keyInput").value.trim();
-    if (!k) {
-      document.getElementById("keyStatus").textContent = "Ключ пустой";
-      return;
-    }
-    localStorage.setItem("geminiKey", k);
-      document.getElementById("saveKey").onclick = async () => {
     const k = document.getElementById("keyInput").value.trim();
     if (!k) return;
     localStorage.setItem("geminiKey", k);
@@ -76,7 +70,7 @@ document.querySelector('[data-view="settings"]').onclick = async () => {
     status.style.color = "#666";
     
     const { checkModel } = await import("./ai-parser.js");
-    const result = await checkModel(k, "gemini-3.8-flash");
+    const result = await checkModel(k, "gemini-2.5-flash");
     
     if (result.ok) {
       status.textContent = "✅ Ключ работает, модель доступна";
@@ -86,10 +80,10 @@ document.querySelector('[data-view="settings"]').onclick = async () => {
       status.style.color = "#c00";
     }
   };
+};
 
 document.querySelector('[data-view="ai"]').onclick = async () => {
   hideMenu();
-  // Добавили sanitizeAIPrimitives в импорт
   const { recognizeImage, fileToBase64, sanitizeAIPrimitives } = await import("./ai-parser.js");
 
   const app = document.getElementById("app");
@@ -120,7 +114,6 @@ document.querySelector('[data-view="ai"]').onclick = async () => {
 
   let parsed = null;
 
-  // Единая функция обработки выбранного файла
   async function handleFile(file) {
     const key = localStorage.getItem("geminiKey");
     const box = document.getElementById("aiResult");
@@ -148,11 +141,9 @@ document.querySelector('[data-view="ai"]').onclick = async () => {
     }
   }
 
-  // Привязываем оба input'а к одной функции
   document.getElementById("aiFileCamera").onchange = (e) => handleFile(e.target.files[0]);
   document.getElementById("aiFileGallery").onchange = (e) => handleFile(e.target.files[0]);
 
-  // Строим чертёж с очисткой
   document.getElementById("aiBuild").onclick = async () => {
     if (!parsed) return;
     state.primitives = [];
