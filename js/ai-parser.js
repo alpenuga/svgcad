@@ -10,11 +10,11 @@ export async function checkModel(apiKey, modelId = "gemini-3.8-flash") {
         "Content-Type": "application/json",
         "x-goog-api-key": apiKey
       },
-            body: JSON.stringify({
+      body: JSON.stringify({
         contents: [{ parts: [{ text: "hi" }] }],
         generationConfig: { 
           maxOutputTokens: 1,
-          thinkingConfig: { thinkingBudget: 0 } // Отключаем раздумья для быстрой проверки
+          thinkingConfig: { thinkingBudget: 0 } // Мгновенная проверка
         }
       })
     });
@@ -33,10 +33,12 @@ const PROMPT = `Ты — инженер-конструктор. На изобр�
 
 ПРАВИЛА:
 1. Размеры в миллиметрах. (0,0) — левый нижний угол.
-2. Ты можешь использовать прямоугольники ("rect") или линии ("line").
-3. Если используешь "rect", ОБЯЗАТЕЛЬНО указывай: x, y, w (ширина), h (высота).
-4. Если используешь "line", ОБЯЗАТЕЛЬНО указывай ВСЕ ЧЕТЫРЕ координаты: x1, y1, x2, y2. 
-   НИКОГДА не пропускай x2 или y2!
+2. СТРОГОЕ ПРАВИЛО: Строй деталь ИСКЛЮЧИТЕЛЬНО из прямоугольников ("rect")!
+   НЕ ИСПОЛЬЗУЙ линии ("line") для прямых углов. Деталь — это набор блоков.
+3. Для каждого прямоугольника ОБЯЗАТЕЛЬНО указывай: x (отступ слева), y (отступ снизу), w (ширина), h (высота).
+   Пример ступенчатой детали 60x40: это несколько прямоугольников, наложенных друг на друга (основание 60x20, выступы сверху).
+4. Линии ("line") используй ТОЛЬКО для наклонных контуров (фаски). 
+   Если используешь линию, ОБЯЗАТЕЛЬНО указывай x1, y1, x2, y2.
 5. Для отверстий используй "circle" (cx, cy, r).
 6. Не добавляй размерные линии, только контур (outline).`;
 
@@ -69,20 +71,29 @@ const SCHEMA = {
   required: ["partName", "overall", "primitives", "confidence"]
 };
 
-// --- ФУНКЦИЯ ОЧИСТКИ (Строгая) ---
+// --- УМНАЯ ФУНКЦИЯ ОЧИСТКИ ---
 export function sanitizeAIPrimitives(primitives) {
   const clean = [];
   for (const p of primitives) {
     if (p.type === "line") {
-      if (p.x1 !== undefined && p.y1 !== undefined && p.x2 !== undefined && p.y2 !== undefined) {
-        if (p.x1 !== p.x2 || p.y1 !== p.y2) {
-          clean.push(p);
-        }
+      // Если ИИ забыл x2 (вертикальная линия), ставим x2 = x1
+      // Если забыл y2 (горизонтальная линия), ставим y2 = y1
+      const x1 = p.x1 !== undefined ? p.x1 : 0;
+      const y1 = p.y1 !== undefined ? p.y1 : 0;
+      const x2 = p.x2 !== undefined ? p.x2 : x1;
+      const y2 = p.y2 !== undefined ? p.y2 : y1;
+
+      // Рисуем только если линия не нулевой длины
+      if (x1 !== x2 || y1 !== y2) {
+        clean.push({ ...p, x1, y1, x2, y2 });
       }
     } 
     else if (p.type === "rect") {
-      if (p.w > 0 && p.h > 0) {
-        clean.push(p);
+      // Защита от пустых прямоугольников
+      const w = p.w !== undefined ? p.w : 10;
+      const h = p.h !== undefined ? p.h : (p.y2 ? p.y2 - (p.y || 0) : 10);
+      if (w > 0 && h > 0) {
+        clean.push({ ...p, w, h, x: p.x || 0, y: p.y || 0 });
       }
     }
     else if (p.type === "circle") {
