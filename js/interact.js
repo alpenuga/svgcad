@@ -70,6 +70,10 @@ export function initInteractivity() {
       selectedPrim.x = initialCoords.x + dx;
       selectedPrim.y = initialCoords.y + dy;
     } 
+    else if (selectedPrim.type === "arc") {
+      selectedPrim.cx = initialCoords.cx + dx;
+      selectedPrim.cy = initialCoords.cy + dy;
+    }
     else if (selectedPrim.type === "circle") {
       selectedPrim.cx = initialCoords.cx + dx;
       selectedPrim.cy = initialCoords.cy + dy;
