@@ -28,25 +28,27 @@ export async function checkModel(apiKey, modelId = "gemini-3.8-flash") {
 }
 
 const PROMPT = `Ты — инженер-конструктор. На изображении — 3D-деталь (изометрия).
-Твоя задача — разбить её на простые 2D прямоугольники (вид спереди).
+Твоя задача — построить её ГЛАВНЫЙ ВИД (вид спереди) в 2D.
 Верни ТОЛЬКО JSON по схеме. Никаких пояснений.
 
 ПРАВИЛА:
-1. Размеры в миллиметрах. (0,0) — левый нижний угол.
-2. СТРОГОЕ ПРАВИЛО: Используй ИСКЛЮЧИТЕЛЬНО прямоугольники ("rect")!
-   Не используй линии ("line") для контуров. 
-3. Для каждого прямоугольника указывай: x, y, w (ширина), h (высота).
-4. Для отверстий используй "circle" (cx, cy, r).
+1. Размеры в миллиметрах. (0,0) — левый нижний угол. Ось Y идет ВВЕРХ.
+2. ГЛАВНЫЙ КОНТУР детали опиши как ОДИН полигон ("polygon").
+   Для этого перечисли все углы детали по порядку (по или против часовой стрелки).
+   Формат: "points": [[x1, y1], [x2, y2], ...]
+3. Отверстия опиши как "circle" (cx, cy, r).
+4. НЕ ИСПОЛЬЗУЙ прямоугольники ("rect") и линии ("line"). Только polygon и circle!
 
-ПРИМЕР: Если деталь 60x40 имеет основание высотой 20 и два выступа шириной 20 и 10.
-Твой ответ:
+ПРИМЕР ступенчатой детали 60x40 (основание 20, два выступа шириной 20 и 10):
 {
   "partName": "Ступенчатая деталь",
   "overall": { "width": 60, "height": 40 },
   "primitives": [
-    { "type": "rect", "role": "outline", "x": 0, "y": 0, "w": 60, "h": 20 },
-    { "type": "rect", "role": "outline", "x": 0, "y": 20, "w": 20, "h": 20 },
-    { "type": "rect", "role": "outline", "x": 40, "y": 20, "w": 10, "h": 20 }
+    {
+      "type": "polygon",
+      "role": "outline",
+      "points": [[0,0], [0,20], [20,20], [20,40], [30,40], [30,20], [50,20], [50,40], [60,40], [60,0]]
+    }
   ],
   "confidence": 0.9,
   "notes": ""
@@ -66,12 +68,18 @@ const SCHEMA = {
       items: {
         type: "object",
         properties: {
-          type: { type: "string", enum: ["rect", "circle"] }, // Убрали line!
+          type: { type: "string", enum: ["polygon", "circle"] },
           role: { type: "string", enum: ["outline", "hole"] },
-          x: { type: "number" }, y: { type: "number" }, w: { type: "number" }, h: { type: "number" },
+          points: { 
+            type: "array", 
+            items: { 
+              type: "array", 
+              items: { type: "number" } 
+            } 
+          },
           cx: { type: "number" }, cy: { type: "number" }, r: { type: "number" }
         },
-        required: ["type", "role", "x", "y", "w", "h"] // Заставили ИИ ВСЕГДА писать координаты
+        required: ["type", "role"]
       }
     },
     confidence: { type: "number" },
@@ -80,33 +88,15 @@ const SCHEMA = {
   required: ["partName", "overall", "primitives", "confidence"]
 };
 
-// --- УМНАЯ ФУНКЦИЯ ОЧИСТКИ ---
+// Упрощенная функция очистки для нового формата
 export function sanitizeAIPrimitives(primitives) {
   const clean = [];
   for (const p of primitives) {
-    if (p.type === "line") {
-      // Если ИИ забыл x2 (вертикальная линия), ставим x2 = x1
-      // Если забыл y2 (горизонтальная линия), ставим y2 = y1
-      const x1 = p.x1 !== undefined ? p.x1 : 0;
-      const y1 = p.y1 !== undefined ? p.y1 : 0;
-      const x2 = p.x2 !== undefined ? p.x2 : x1;
-      const y2 = p.y2 !== undefined ? p.y2 : y1;
-
-      // Рисуем только если линия не нулевой длины
-      if (x1 !== x2 || y1 !== y2) {
-        clean.push({ ...p, x1, y1, x2, y2 });
-      }
+    if (p.type === "polygon" && p.points && p.points.length > 2) {
+      clean.push(p);
     } 
-    else if (p.type === "rect") {
-      // Защита от пустых прямоугольников
-      const w = p.w !== undefined ? p.w : 10;
-      const h = p.h !== undefined ? p.h : (p.y2 ? p.y2 - (p.y || 0) : 10);
-      if (w > 0 && h > 0) {
-        clean.push({ ...p, w, h, x: p.x || 0, y: p.y || 0 });
-      }
-    }
-    else if (p.type === "circle") {
-      if (p.r > 0) clean.push(p);
+    else if (p.type === "circle" && p.r > 0) {
+      clean.push(p);
     }
   }
   return clean;
