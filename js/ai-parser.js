@@ -1,15 +1,14 @@
 // js/ai-parser.js — распознавание чертежей через Gemini
-const MODEL_CHAIN = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash"];
+const MODEL_CHAIN = ["gemini-2.5-flash", "gemini-3.6-flash", "gemini-3.8-flash"];
 const API = "https://generativelanguage.googleapis.com/v1beta/models";
 
-export async function checkModel(apiKey, modelId = "gemini-3.8-flash") {
+export async function checkModel(apiKey, modelId = "gemini-2.5-flash") {
   try {
-    // Убираем ?key= из URL
     const res = await fetch(`${API}/${modelId}:generateContent`, {
       method: "POST",
       headers: { 
         "Content-Type": "application/json",
-        "x-goog-api-key": apiKey // Передаем ключ в заголовке
+        "x-goog-api-key": apiKey
       },
       body: JSON.stringify({
         contents: [{ parts: [{ text: "hi" }] }],
@@ -54,11 +53,8 @@ const SCHEMA = {
         properties: {
           type: { type: "string", enum: ["line", "circle", "rect"] },
           role: { type: "string", enum: ["outline", "hole"] },
-          // Поля для прямоугольника
           x: { type: "number" }, y: { type: "number" }, w: { type: "number" }, h: { type: "number" },
-          // Поля для линии
           x1: { type: "number" }, y1: { type: "number" }, x2: { type: "number" }, y2: { type: "number" },
-          // Поля для круга
           cx: { type: "number" }, cy: { type: "number" }, r: { type: "number" }
         },
         required: ["type", "role"]
@@ -75,7 +71,6 @@ export function sanitizeAIPrimitives(primitives) {
   const clean = [];
   for (const p of primitives) {
     if (p.type === "line") {
-      // Если ИИ забыл хотя бы одну координату — выкидываем эту линию
       if (p.x1 !== undefined && p.y1 !== undefined && p.x2 !== undefined && p.y2 !== undefined) {
         if (p.x1 !== p.x2 || p.y1 !== p.y2) {
           clean.push(p);
@@ -83,7 +78,6 @@ export function sanitizeAIPrimitives(primitives) {
       }
     } 
     else if (p.type === "rect") {
-      // Если прямоугольник без ширины или высоты — пропускаем
       if (p.w > 0 && p.h > 0) {
         clean.push(p);
       }
@@ -114,14 +108,15 @@ export async function recognizeImage(apiKey, base64, mimeType) {
   let lastError;
   for (const model of MODEL_CHAIN) {
     try {
-     const res = await fetch(`${API}/${model}:generateContent`, { // Убрали ?key=
-  method: "POST",
-  headers: { 
-    "Content-Type": "application/json",
-    "x-goog-api-key": apiKey // Добавили заголовок
-  },
-  body: JSON.stringify(body)
-});
+      const res = await fetch(`${API}/${model}:generateContent`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey
+        },
+        body: JSON.stringify(body)
+      });
+      
       if (res.ok) {
         const data = await res.json();
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -136,7 +131,6 @@ export async function recognizeImage(apiKey, base64, mimeType) {
   throw new Error("Все модели недоступны: " + lastError);
 }
 
-// Конвертация изображения в base64 (без префикса)
 export function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
