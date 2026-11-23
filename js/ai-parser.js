@@ -1,5 +1,5 @@
 // js/ai-parser.js — распознавание чертежей через Gemini
-const MODEL_CHAIN = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.8-flash"];
+const MODEL_CHAIN = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash"];
 const API = "https://generativelanguage.googleapis.com/v1beta/models";
 
 export async function checkModel(apiKey, modelId = "gemini-3.8-flash") {
