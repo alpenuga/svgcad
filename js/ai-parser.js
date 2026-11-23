@@ -10,9 +10,12 @@ export async function checkModel(apiKey, modelId = "gemini-3.8-flash") {
         "Content-Type": "application/json",
         "x-goog-api-key": apiKey
       },
-      body: JSON.stringify({
+            body: JSON.stringify({
         contents: [{ parts: [{ text: "hi" }] }],
-        generationConfig: { maxOutputTokens: 1 }
+        generationConfig: { 
+          maxOutputTokens: 1,
+          thinkingConfig: { thinkingBudget: 0 } // Отключаем раздумья для быстрой проверки
+        }
       })
     });
     
