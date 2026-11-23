@@ -6,25 +6,32 @@ let selectedPrim = null;
 let startX = 0;
 let startY = 0;
 let initialCoords = {};
+let activePointerId = null;
 
 export function initInteractivity() {
   const svg = document.getElementById("sheet");
   if (!svg) return;
 
-  // Конвертация координат мыши/пальца в миллиметры листа
+  // 1. Отключаем стандартный скролл браузера при касании чертежа
+  svg.style.touchAction = "none";
+
+  // Защита от дублирования обработчиков
+  if (svg.dataset.interactive === "true") return;
+  svg.dataset.interactive = "true";
+
+  // Конвертация координат пальца в миллиметры листа
   function getMousePos(evt) {
     const rect = svg.getBoundingClientRect();
-    const scaleX = (svg.viewBox.baseVal.width) / rect.width;
-    const scaleY = (svg.viewBox.baseVal.height) / rect.height;
-    // Учитываем, что лист может быть прокручен
+    const vb = svg.viewBox.baseVal;
     return {
-      x: (evt.clientX - rect.left) * scaleX,
-      y: (evt.clientY - rect.top) * scaleY
+      x: (evt.clientX - rect.left) * (vb.width / rect.width),
+      y: (evt.clientY - rect.top) * (vb.height / rect.height)
     };
   }
 
-  // 1. Нажатие (выбор элемента)
+  // 2. Нажатие
   svg.addEventListener("pointerdown", (e) => {
+    if (isDragging) return;
     const target = e.target.closest("[data-id]");
     if (!target) return;
 
@@ -32,28 +39,27 @@ export function initInteractivity() {
     selectedPrim = state.primitives.find(p => p.id === id);
     if (!selectedPrim) return;
 
+    e.preventDefault();
     isDragging = true;
+    activePointerId = e.pointerId;
+    
     const pos = getMousePos(e);
     startX = pos.x;
     startY = pos.y;
 
-    // Запоминаем изначальные координаты
     initialCoords = JSON.parse(JSON.stringify(selectedPrim));
-
-    // Подсветка (визуально)
-    target.style.opacity = "0.5";
     svg.setPointerCapture(e.pointerId);
   });
 
-  // 2. Движение (перетаскивание)
+  // 3. Движение
   svg.addEventListener("pointermove", (e) => {
-    if (!isDragging || !selectedPrim) return;
+    if (!isDragging || !selectedPrim || e.pointerId !== activePointerId) return;
+    e.preventDefault();
 
     const pos = getMousePos(e);
     const dx = pos.x - startX;
     const dy = pos.y - startY;
 
-    // Обновляем координаты в зависимости от типа
     if (selectedPrim.type === "line" || selectedPrim.type === "dimension") {
       selectedPrim.x1 = initialCoords.x1 + dx;
       selectedPrim.y1 = initialCoords.y1 + dy;
@@ -75,12 +81,15 @@ export function initInteractivity() {
     renderSheet(state.paper);
   });
 
-  // 3. Отпускание (сохранение)
-  svg.addEventListener("pointerup", (e) => {
-    if (!isDragging) return;
+  // 4. Отпускание
+  const endDrag = (e) => {
+    if (e.pointerId !== activePointerId) return;
     isDragging = false;
     selectedPrim = null;
-    svg.releasePointerCapture(e.pointerId);
-    renderSheet(state.paper); // Сбрасываем подсветку
-  });
+    activePointerId = null;
+    renderSheet(state.paper);
+  };
+
+  svg.addEventListener("pointerup", endDrag);
+  svg.addEventListener("pointercancel", endDrag);
 }
