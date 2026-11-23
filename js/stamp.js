@@ -9,13 +9,16 @@ export function loadStamp() {
     if (raw) {
       const p = JSON.parse(raw);
       state.stamp.width = p.width || 185;
+      state.stamp.height = p.height || 55;
       state.stamp.grid  = p.grid  || defaultGostTemplate(185, 55);
     } else {
       state.stamp.width = 185;
+      state.stamp.height = 55;
       state.stamp.grid  = defaultGostTemplate(185, 55);
     }
   } catch {
     state.stamp.width = 185;
+    state.stamp.height = 55; 
     state.stamp.grid  = defaultGostTemplate(185, 55);
   }
 }
@@ -23,6 +26,7 @@ export function loadStamp() {
 export function saveStamp() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     width: state.stamp.width,
+    height: state.stamp.height,
     grid:  state.stamp.grid
   }));
 }
