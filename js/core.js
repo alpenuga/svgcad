@@ -80,12 +80,23 @@ for (const p of state.primitives) {
   
   // --- ЗОНА ЗАХВАТА (HIT AREA) ---
   // Создаем невидимую копию элемента с толстым контуром
-  const hit = node.cloneNode(true);
-  hit.setAttribute("stroke", "rgba(0,0,0,0.001)");
-  hit.setAttribute("stroke-width", "8"); // 8 мм — очень удобно для пальца
-  hit.setAttribute("fill", "rgba(0,0,0,0.001)"); // ловит касания даже внутри пустых фигур
-  hit.setAttribute("pointer-events", "all");
-  hit.removeAttribute("data-id");
+      let hit;
+    // Если это дуга, создаем для неё невидимый круг вокруг центра
+    if (p.type === "arc") {
+      hit = el("circle", { 
+        cx: p.cx, cy: p.cy, r: p.r + 5, 
+        fill: "none", stroke: "rgba(0,0,0,0.001)", "stroke-width": "12" 
+      });
+    } else {
+      // Для остальных фигур — стандартный толстый контур-клон
+      hit = node.cloneNode(true);
+      hit.setAttribute("stroke", "rgba(0,0,0,0.001)");
+      hit.setAttribute("stroke-width", "8");
+      hit.setAttribute("fill", "rgba(0,0,0,0.001)");
+    }
+    
+    hit.setAttribute("pointer-events", "all");
+    hit.removeAttribute("data-id");
   
   // Оборачиваем видимый элемент и зону захвата в одну группу
   const wrap = el("g", { "data-id": p.id });
