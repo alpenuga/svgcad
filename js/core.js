@@ -49,10 +49,20 @@ export function renderSheet(paperKey) {
   svg.setAttribute("height", h * 3);
   svg.innerHTML = "";
 
-  // Лист
+  // 1. ДОБАВЛЯЕМ ОПРЕДЕЛЕНИЯ ДЛЯ СТРЕЛОЧЕК (размеров)
+  const defs = el("defs");
+  const marker = el("marker", {
+    id: "arrow", markerWidth: "6", markerHeight: "6", refX: "5", refY: "3",
+    orient: "auto", markerUnits: "strokeWidth"
+  });
+  marker.appendChild(el("path", { d: "M0,0 L6,3 L0,6 Z", fill: "#06c" }));
+  defs.appendChild(marker);
+  svg.appendChild(defs);
+
+  // 2. Лист
   svg.appendChild(el("rect", { x: 0, y: 0, width: w, height: h, fill: "#fff" }));
 
-  // Рамка по ГОСТ
+  // 3. Рамка по ГОСТ
   svg.appendChild(el("rect", {
     x: FRAME.left, y: FRAME.top,
     width: w - FRAME.left - FRAME.right,
@@ -60,12 +70,12 @@ export function renderSheet(paperKey) {
     fill: "none", stroke: "#000", "stroke-width": 0.7
   }));
 
-  // Слой примитивов
+  // 4. Слой примитивов
   const g = el("g", { id: "primitives" });
   svg.appendChild(g);
   for (const p of state.primitives) g.appendChild(primitiveToSvg(p));
 
-  // Штамп
+  // 5. Штамп
   if (window.__renderStamp) window.__renderStamp(svg);
 
   return svg;
@@ -104,6 +114,27 @@ export function primitiveToSvg(p) {
     case "arc":
       node = el("path", { d: arcPath(p), fill: "none" });
       break;
+    case "dimension":
+      // Сама размерная линия
+      node = el("line", { 
+        x1: p.x1, y1: p.y1, x2: p.x2, y2: p.y2, 
+        "marker-start": "url(#arrow)", "marker-end": "url(#arrow)" 
+      });
+      // Текст размера (по центру)
+      const text = el("text", {
+        x: (p.x1 + p.x2) / 2, 
+        y: (p.y1 + p.y2) / 2 - 1.5,
+        "font-size": 3, "font-family": "Arial", "text-anchor": "middle",
+        fill: "#06c", "font-weight": "bold"
+      });
+      text.textContent = p.text;
+      
+      // Группируем линию и текст
+      const group = el("g");
+      group.appendChild(node);
+      group.appendChild(text);
+      return group;
+
     case "text":
       node = el("text", {
         x: p.x, y: p.y, "font-size": p.size || 3,
