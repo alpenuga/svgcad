@@ -97,6 +97,11 @@ export function primitiveToSvg(p) {
     case "rect":
       node = el("rect", { x: p.x, y: p.y, width: p.w, height: p.h, fill: "none" });
       break;
+    case "polygon":
+      // Превращаем массив точек [[x1,y1], [x2,y2]...] в строку для SVG
+      const pointsStr = p.points.map(pt => pt.join(",")).join(" ");
+      node = el("polygon", { points: pointsStr, fill: "none" });
+      break;
     case "arc":
       node = el("path", { d: arcPath(p), fill: "none" });
       break;
