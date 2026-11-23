@@ -1,5 +1,5 @@
 // js/app.js — точка входа, меню, экраны
-import { state, renderSheet, addPrimitive, PAPERS } from "./core.js";
+import { state, renderSheet, addPrimitive, PAPERS, FRAME } from "./core.js";
 import { buildToolbarHtml, bindToolbar } from "./toolbar.js";
 import "./stamp.js";
 import { loadStamp } from "./stamp.js";
@@ -144,13 +144,46 @@ document.querySelector('[data-view="ai"]').onclick = async () => {
   document.getElementById("aiFileCamera").onchange = (e) => handleFile(e.target.files[0]);
   document.getElementById("aiFileGallery").onchange = (e) => handleFile(e.target.files[0]);
 
-  document.getElementById("aiBuild").onclick = async () => {
+    document.getElementById("aiBuild").onclick = async () => {
     if (!parsed) return;
     state.primitives = [];
     
     const cleanPrimitives = sanitizeAIPrimitives(parsed.primitives);
+    const overall = parsed.overall || { width: 100, height: 100 };
+
+    // Вычисляем, куда сместить деталь, чтобы она была по центру листа
+    const page = PAPERS[state.paper];
+    const drawW = page.w - FRAME.left - FRAME.right;
+    const drawH = page.h - FRAME.top - FRAME.bottom;
+    const offsetX = FRAME.left + drawW / 2 - overall.width / 2;
+    const offsetY = FRAME.top + drawH / 2 + overall.height / 2;
+
+    // Сортируем: сначала прямоугольники (они закроют линии друг друга), потом всё остальное
+    cleanPrimitives.sort((a, b) => {
+      if (a.type === "rect" || a.type === "polygon") return -1;
+      return 1;
+    });
     
-    cleanPrimitives.forEach(p => addPrimitive({ ...p }));
+    cleanPrimitives.forEach(p => {
+      const np = { ...p };
+      // Переворачиваем ось Y и центрируем
+      if (np.type === "rect") {
+        np.x += offsetX;
+        np.y = offsetY - np.y - np.h; // Переворачиваем Y
+        np.fill = "#fff";             // Белая заливка скроет внутренние линии!
+      } else if (np.type === "polygon") {
+        np.points = np.points.map(pt => [pt[0] + offsetX, offsetY - pt[1]]);
+        np.fill = "#fff";
+      } else if (np.type === "circle") {
+        np.cx += offsetX;
+        np.cy = offsetY - np.cy;
+      } else if (np.type === "line") {
+        np.x1 += offsetX; np.y1 = offsetY - np.y1;
+        np.x2 += offsetX; np.y2 = offsetY - np.y2;
+      }
+      addPrimitive(np);
+    });
+
     const m = await import("./toolbar.js");
     document.getElementById("app").innerHTML = m.buildToolbarHtml();
     m.bindToolbar();
