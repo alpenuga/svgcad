@@ -13,15 +13,12 @@ export async function checkModel(apiKey, modelId = "gemini-3.8-flash") {
       })
     });
     
-    // Если ответ не OK, выводим ошибку в консоль
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      console.error(`Ошибка проверки модели ${modelId}:`, err);
-    }
-    return res.ok;
+    if (res.ok) return { ok: true };
+    
+    const err = await res.json().catch(() => ({}));
+    return { ok: false, error: err.error?.message || `HTTP ${res.status}` };
   } catch (e) {
-    console.error(`Сетевая ошибка при проверке модели ${modelId}:`, e);
-    return false;
+    return { ok: false, error: "Сеть: " + e.message };
   }
 }
 
