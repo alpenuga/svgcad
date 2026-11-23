@@ -71,9 +71,30 @@ export function renderSheet(paperKey) {
   }));
 
   // 4. Слой примитивов
-  const g = el("g", { id: "primitives" });
-  svg.appendChild(g);
-  for (const p of state.primitives) g.appendChild(primitiveToSvg(p));
+const g = el("g", { id: "primitives" });
+svg.appendChild(g);
+
+for (const p of state.primitives) {
+  const node = primitiveToSvg(p);
+  if (!node) continue;
+  
+  // --- ЗОНА ЗАХВАТА (HIT AREA) ---
+  // Создаем невидимую копию элемента с толстым контуром
+  const hit = node.cloneNode(true);
+  hit.setAttribute("stroke", "rgba(0,0,0,0.001)");
+  hit.setAttribute("stroke-width", "8"); // 8 мм — очень удобно для пальца
+  hit.setAttribute("fill", "rgba(0,0,0,0.001)"); // ловит касания даже внутри пустых фигур
+  hit.setAttribute("pointer-events", "all");
+  hit.removeAttribute("data-id");
+  
+  // Оборачиваем видимый элемент и зону захвата в одну группу
+  const wrap = el("g", { "data-id": p.id });
+  node.removeAttribute("data-id");
+  wrap.appendChild(node);
+  wrap.appendChild(hit);
+  
+  g.appendChild(wrap);
+}
 
   // 5. Штамп
   if (window.__renderStamp) window.__renderStamp(svg);
