@@ -23,6 +23,7 @@ export function buildToolbarHtml() {
       <button id="addCircle">Круг</button>
       <button id="addRect">Прямоуг.</button>
       <button id="addArc">Дуга</button>
+      <button id="addDim">Размер</button>
       <button id="undoBtn">↶</button>
       <button id="clearBtn">🧹</button>
       <button id="exportSvg">⬇ SVG</button>
@@ -74,6 +75,23 @@ export function bindToolbar() {
     const a1 = promptNumber("Начало (°)", 0);     if (a1 === null) return;
     const a2 = promptNumber("Конец (°)", 90);     if (a2 === null) return;
     addPrimitive({ type: "arc", role: "fillet", cx, cy, r, startAngle: a1, endAngle: a2 });
+    renderSheet(state.paper);
+  };
+
+  const dimBtn = document.getElementById("addDim");
+  if (dimBtn) dimBtn.onclick = () => {
+    const x1 = promptNumber("Начало X (мм)", 50); if (x1 === null) return;
+    const y1 = promptNumber("Начало Y (мм)", 100); if (y1 === null) return;
+    const x2 = promptNumber("Конец X (мм)", 110); if (x2 === null) return;
+    const y2 = promptNumber("Конец Y (мм)", 100); if (y2 === null) return;
+    
+    // Считаем длину по теореме Пифагора
+    const length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)).toFixed(1);
+    
+    addPrimitive({ 
+      type: "dimension", role: "dimension", 
+      x1, y1, x2, y2, text: length 
+    });
     renderSheet(state.paper);
   };
 
