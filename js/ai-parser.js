@@ -4,9 +4,13 @@ const API = "https://generativelanguage.googleapis.com/v1beta/models";
 
 export async function checkModel(apiKey, modelId = "gemini-3.8-flash") {
   try {
-    const res = await fetch(`${API}/${modelId}:generateContent?key=${apiKey}`, {
+    // Убираем ?key= из URL
+    const res = await fetch(`${API}/${modelId}:generateContent`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey // Передаем ключ в заголовке
+      },
       body: JSON.stringify({
         contents: [{ parts: [{ text: "hi" }] }],
         generationConfig: { maxOutputTokens: 1 }
@@ -14,7 +18,6 @@ export async function checkModel(apiKey, modelId = "gemini-3.8-flash") {
     });
     
     if (res.ok) return { ok: true };
-    
     const err = await res.json().catch(() => ({}));
     return { ok: false, error: err.error?.message || `HTTP ${res.status}` };
   } catch (e) {
@@ -111,11 +114,14 @@ export async function recognizeImage(apiKey, base64, mimeType) {
   let lastError;
   for (const model of MODEL_CHAIN) {
     try {
-      const res = await fetch(`${API}/${model}:generateContent?key=${apiKey}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-      });
+     const res = await fetch(`${API}/${model}:generateContent`, { // Убрали ?key=
+  method: "POST",
+  headers: { 
+    "Content-Type": "application/json",
+    "x-goog-api-key": apiKey // Добавили заголовок
+  },
+  body: JSON.stringify(body)
+});
       if (res.ok) {
         const data = await res.json();
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
