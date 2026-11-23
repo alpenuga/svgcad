@@ -1,5 +1,6 @@
 // js/app.js — точка входа, меню, экраны
 import { state, renderSheet, addPrimitive, PAPERS, FRAME } from "./core.js";
+import { initInteractivity } from "./interact.js";
 import { buildToolbarHtml, bindToolbar } from "./toolbar.js";
 import "./stamp.js";
 import { loadStamp } from "./stamp.js";
@@ -17,6 +18,7 @@ function showToolbarAndSheet() {
   document.getElementById("app").innerHTML = buildToolbarHtml();
   bindToolbar();
   renderSheet(state.paper);
+  initInteractivity();
 }
 
 /* ------- Обработчики меню ------- */
