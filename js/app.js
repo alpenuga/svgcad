@@ -1,11 +1,11 @@
 // js/app.js — точка входа, меню, экраны
 import { state, renderSheet, addPrimitive, PAPERS, FRAME } from "./core.js";
-import { initInteractivity } from "./interact.js";
 import { buildToolbarHtml, bindToolbar } from "./toolbar.js";
 import "./stamp.js";
 import { loadStamp } from "./stamp.js";
+import { initInteractivity } from "./interact.js";
 
-loadStamp();   // Загружаем сохранённый штамп или ГОСТ по умолчанию
+loadStamp();
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./sw.js").catch(() => {});
@@ -146,50 +146,98 @@ document.querySelector('[data-view="ai"]').onclick = async () => {
   document.getElementById("aiFileCamera").onchange = (e) => handleFile(e.target.files[0]);
   document.getElementById("aiFileGallery").onchange = (e) => handleFile(e.target.files[0]);
 
-    document.getElementById("aiBuild").onclick = async () => {
+  document.getElementById("aiBuild").onclick = async () => {
     if (!parsed) return;
-    state.primitives = [];
-    
     const cleanPrimitives = sanitizeAIPrimitives(parsed.primitives);
-    const overall = parsed.overall || { width: 100, height: 100 };
-
-    // Вычисляем, куда сместить деталь, чтобы она была по центру листа
-    const page = PAPERS[state.paper];
-    const drawW = page.w - FRAME.left - FRAME.right;
-    const drawH = page.h - FRAME.top - FRAME.bottom;
-    const offsetX = FRAME.left + drawW / 2 - overall.width / 2;
-    const offsetY = FRAME.top + drawH / 2 + overall.height / 2;
-
-    // Сортируем: сначала прямоугольники (они закроют линии друг друга), потом всё остальное
-    cleanPrimitives.sort((a, b) => {
-      if (a.type === "rect" || a.type === "polygon") return -1;
-      return 1;
-    });
     
-    cleanPrimitives.forEach(p => {
-      const np = { ...p };
-      // Переворачиваем ось Y и центрируем
-      if (np.type === "rect") {
-        np.x += offsetX;
-        np.y = offsetY - np.y - np.h; // Переворачиваем Y
-        np.fill = "#fff";             // Белая заливка скроет внутренние линии!
-      } else if (np.type === "polygon") {
-        np.points = np.points.map(pt => [pt[0] + offsetX, offsetY - pt[1]]);
-        np.fill = "#fff";
-      } else if (np.type === "circle") {
-        np.cx += offsetX;
-        np.cy = offsetY - np.cy;
-      } else if (np.type === "line") {
-        np.x1 += offsetX; np.y1 = offsetY - np.y1;
-        np.x2 += offsetX; np.y2 = offsetY - np.y2;
+    const app = document.getElementById("app");
+    app.innerHTML = `
+      <div class="screen">
+        <h2>🔍 Проверьте данные</h2>
+        <p style="font-size:13px;color:#666">ИИ распознал эти параметры. Вы можете их изменить перед построением.</p>
+        <div id="editForm" style="margin-top:16px"></div>
+        <button id="confirmBuild" class="primary" style="margin-top:20px;width:100%;padding:12px">✅ Построить</button>
+        <button id="cancelBuild" style="margin-top:8px;width:100%;padding:12px;background:#eee;color:#333">Отмена</button>
+      </div>`;
+
+    const form = document.getElementById("editForm");
+
+    cleanPrimitives.forEach((p, index) => {
+      const div = document.createElement("div");
+      div.style.cssText = "padding:10px; border:1px solid #ddd; margin-bottom:10px; border-radius:8px; background:#fff";
+      
+      let inputs = "";
+      if (p.type === "rect") {
+        inputs = `
+          <label>X: <input type="number" data-idx="${index}" data-key="x" value="${p.x}"></label>
+          <label>Y: <input type="number" data-idx="${index}" data-key="y" value="${p.y}"></label>
+          <label>Ширина: <input type="number" data-idx="${index}" data-key="w" value="${p.w}"></label>
+          <label>Высота: <input type="number" data-idx="${index}" data-key="h" value="${p.h}"></label>
+        `;
+      } else if (p.type === "circle") {
+        inputs = `
+          <label>X центра: <input type="number" data-idx="${index}" data-key="cx" value="${p.cx}"></label>
+          <label>Y центра: <input type="number" data-idx="${index}" data-key="cy" value="${p.cy}"></label>
+          <label>Радиус: <input type="number" data-idx="${index}" data-key="r" value="${p.r}"></label>
+        `;
+      } else if (p.type === "line") {
+        inputs = `
+          <label>X1: <input type="number" data-idx="${index}" data-key="x1" value="${p.x1}"></label>
+          <label>Y1: <input type="number" data-idx="${index}" data-key="y1" value="${p.y1}"></label>
+          <label>X2: <input type="number" data-idx="${index}" data-key="x2" value="${p.x2}"></label>
+          <label>Y2: <input type="number" data-idx="${index}" data-key="y2" value="${p.y2}"></label>
+        `;
+      } else if (p.type === "polygon") {
+         inputs = `<p style="font-size:12px;color:#666">Полигон (${p.points.length} точек) — координаты взяты из ИИ.</p>`;
       }
-      addPrimitive(np);
+
+      div.innerHTML = `<b>${index + 1}. ${p.type} (${p.role})</b><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">${inputs}</div>`;
+      form.appendChild(div);
     });
 
-    const m = await import("./toolbar.js");
-    document.getElementById("app").innerHTML = m.buildToolbarHtml();
-    m.bindToolbar();
-    renderSheet(state.paper);
+    document.getElementById("confirmBuild").onclick = () => {
+      form.querySelectorAll("input").forEach(inp => {
+        const idx = +inp.dataset.idx;
+        const key = inp.dataset.key;
+        cleanPrimitives[idx][key] = parseFloat(inp.value) || 0;
+      });
+
+      const overall = parsed.overall || { width: 100, height: 100 };
+      const page = PAPERS[state.paper];
+      const drawW = page.w - FRAME.left - FRAME.right;
+      const drawH = page.h - FRAME.top - FRAME.bottom;
+      const offsetX = FRAME.left + drawW / 2 - overall.width / 2;
+      const offsetY = FRAME.top + drawH / 2 + overall.height / 2;
+
+      state.primitives = [];
+      cleanPrimitives.sort((a, b) => (a.type === "rect" || a.type === "polygon" ? -1 : 1));
+      
+      cleanPrimitives.forEach(p => {
+        const np = { ...p };
+        if (np.type === "rect") {
+          np.x += offsetX;
+          np.y = offsetY - np.y - np.h;
+          np.fill = "#fff";
+        } else if (np.type === "polygon") {
+          np.points = np.points.map(pt => [pt[0] + offsetX, offsetY - pt[1]]);
+          np.fill = "#fff";
+        } else if (np.type === "circle") {
+          np.cx += offsetX;
+          np.cy = offsetY - np.cy;
+        } else if (np.type === "line") {
+          np.x1 += offsetX; np.y1 = offsetY - np.y1;
+          np.x2 += offsetX; np.y2 = offsetY - np.y2;
+        }
+        state.primitives.push(np);
+      });
+      
+      showToolbarAndSheet();
+    };
+
+    document.getElementById("cancelBuild").onclick = () => {
+      state.primitives = [];
+      showToolbarAndSheet();
+    };
   };
 };
 
