@@ -72,7 +72,7 @@ document.querySelector('[data-view="settings"]').onclick = async () => {
     status.style.color = "#666";
     
     const { checkModel } = await import("./ai-parser.js");
-    const result = await checkModel(k, "gemini-3.8-flash");
+    const result = await checkModel(k);
     
     if (result.ok) {
       status.textContent = "✅ Ключ работает, модель доступна";
