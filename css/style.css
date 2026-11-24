@@ -84,3 +84,50 @@ body { display: flex; flex-direction: column; background: #e9eef3; color: #222; 
   overflow: auto; font-size: 12px; line-height: 1.4;
   max-height: 40vh;
 }
+/* === Стили для редактора данных ИИ === */
+#editForm {
+  margin-top: 16px;
+}
+
+#editForm label {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  color: #555;
+  flex: 1;
+  min-width: 45%;
+}
+
+#editForm input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  font-size: 15px;
+  margin-top: 4px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+/* Кнопки в редакторе ИИ (Построить / Отмена) */
+#confirmBuild, #cancelBuild {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  border-radius: 8px;
+  border: none;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 12px;
+}
+
+#confirmBuild {
+  background: #0b6cbf;
+  color: #fff;
+}
+
+#cancelBuild {
+  background: #e2e8f0;
+  color: #333;
+}
