@@ -1,6 +1,9 @@
 // js/ai-parser.js — распознавание чертежей через Gemini
-const MODEL_CHAIN = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash"];
+const DEFAULT_MODEL = "gemini-3.6-flash"; // <--- МЕНЯТЬ МОДЕЛЬ ТОЛЬКО ЗДЕСЬ
+const MODEL_CHAIN = [DEFAULT_MODEL, "gemini-3.5-flash", "gemini-3.8-flash"];
 const API = "https://generativelanguage.googleapis.com/v1beta/models";
+
+export async function checkModel(apiKey, modelId = DEFAULT_MODEL) {
 
 export async function checkModel(apiKey, modelId = "gemini-3.8-flash") {
   try {
@@ -152,7 +155,10 @@ export async function recognizeImage(apiKey, base64, mimeType) {
         if (!text) throw new Error("Пустой ответ от модели");
         return JSON.parse(text);
       }
-      if (res.status === 429 || res.status === 404) { lastError = `HTTP ${res.status}`; continue; }
+        if (res.status === 429 || res.status === 404 || res.status === 503) { 
+        lastError = `HTTP ${res.status}`; 
+        continue; 
+      }
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error?.message || `HTTP ${res.status}`);
     } catch (e) { lastError = e.message || String(e); }
