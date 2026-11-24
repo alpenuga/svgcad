@@ -188,7 +188,14 @@ document.querySelector('[data-view="ai"]').onclick = async () => {
           <label>Y2: <input type="number" data-idx="${index}" data-key="y2" value="${p.y2}"></label>
         `;
       } else if (p.type === "polygon") {
-         inputs = `<p style="font-size:12px;color:#666">Полигон (${p.points.length} точек) — координаты взяты из ИИ.</p>`;
+         inputs = "";
+         p.points.forEach((pt, ptIdx) => {
+           inputs += `
+             <div style="width:100%; margin-top:8px; font-size:12px; font-weight:bold; color:#555;">Точка ${ptIdx + 1}:</div>
+             <label>X: <input type="number" data-idx="${index}" data-pt="${ptIdx}" data-axis="0" value="${pt[0]}"></label>
+             <label>Y: <input type="number" data-idx="${index}" data-pt="${ptIdx}" data-axis="1" value="${pt[1]}"></label>
+           `;
+         });
       }
 
       div.innerHTML = `<b>${index + 1}. ${p.type} (${p.role})</b><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">${inputs}</div>`;
@@ -196,10 +203,19 @@ document.querySelector('[data-view="ai"]').onclick = async () => {
     });
 
     document.getElementById("confirmBuild").onclick = () => {
-      form.querySelectorAll("input").forEach(inp => {
+            form.querySelectorAll("input").forEach(inp => {
         const idx = +inp.dataset.idx;
         const key = inp.dataset.key;
-        cleanPrimitives[idx][key] = parseFloat(inp.value) || 0;
+        const ptIdx = inp.dataset.pt;
+        const axis = inp.dataset.axis;
+
+        if (ptIdx !== undefined) {
+          // Обновляем координаты полигона
+          cleanPrimitives[idx].points[ptIdx][+axis] = parseFloat(inp.value) || 0;
+        } else if (key) {
+          // Обновляем координаты прямоугольников, кругов и линий
+          cleanPrimitives[idx][key] = parseFloat(inp.value) || 0;
+        }
       });
 
       const overall = parsed.overall || { width: 100, height: 100 };
