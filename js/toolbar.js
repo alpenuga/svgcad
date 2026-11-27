@@ -26,6 +26,7 @@ export function buildToolbarHtml() {
       <button id="addDim">Размер</button>
       <button id="undoBtn">↶</button>
       <button id="clearBtn">🧹</button>
+      <button id="toggleStamp">Штамп: Вкл</button>
       <button id="exportSvg">⬇ SVG</button>
     </section>
     <section id="canvasWrap">
@@ -105,6 +106,16 @@ export function bindToolbar() {
       renderSheet(state.paper);
     }
   };
+
+  const btnStamp = document.getElementById("toggleStamp");
+  if (btnStamp) {
+    btnStamp.textContent = state.showStamp ? "Штамп: Вкл" : "Штамп: Выкл";
+    btnStamp.onclick = () => {
+      state.showStamp = !state.showStamp;
+      btnStamp.textContent = state.showStamp ? "Штамп: Вкл" : "Штамп: Выкл";
+      renderSheet(state.paper);
+    };
+  }
 
   const exportBtn = document.getElementById("exportSvg");
   if (exportBtn) exportBtn.onclick = () => {
