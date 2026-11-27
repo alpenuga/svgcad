@@ -1,4 +1,4 @@
-// js/interact.js — перетаскивание примитивов
+// js/interact.js — перетаскивание примитивов и редактирование
 import { state, renderSheet } from "./core.js";
 
 let isDragging = false;
@@ -7,15 +7,40 @@ let startX = 0;
 let startY = 0;
 let initialCoords = {};
 let activePointerId = null;
+let lastTap = 0;
 
+// --- Функция редактирования (вызывается по двойному клику) ---
+function editPrimitive(prim) {
+  if (prim.type === "line" || prim.type === "dimension") {
+    const len = Math.sqrt(Math.pow(prim.x2 - prim.x1, 2) + Math.pow(prim.y2 - prim.y1, 2)).toFixed(1);
+    const newLen = prompt("Длина линии (мм):", len);
+    if (newLen && !isNaN(newLen)) {
+      const angle = Math.atan2(prim.y2 - prim.y1, prim.x2 - prim.x1);
+      prim.x2 = prim.x1 + parseFloat(newLen) * Math.cos(angle);
+      prim.y2 = prim.y1 + parseFloat(newLen) * Math.sin(angle);
+      if (prim.text !== undefined) prim.text = newLen;
+    }
+  } else if (prim.type === "rect") {
+    const w = prompt("Ширина (мм):", prim.w);
+    if (w && !isNaN(w)) prim.w = parseFloat(w);
+    const h = prompt("Высота (мм):", prim.h);
+    if (h && !isNaN(h)) prim.h = parseFloat(h);
+  } else if (prim.type === "circle") {
+    const r = prompt("Радиус (мм):", prim.r);
+    if (r && !isNaN(r)) prim.r = parseFloat(r);
+  } else if (prim.type === "arc") {
+    const r = prompt("Радиус дуги (мм):", prim.r);
+    if (r && !isNaN(r)) prim.r = parseFloat(r);
+  }
+  renderSheet(state.paper);
+}
+
+// --- Основная инициализация ---
 export function initInteractivity() {
   const svg = document.getElementById("sheet");
   if (!svg) return;
-
-  // 1. Отключаем стандартный скролл браузера при касании чертежа
+  
   svg.style.touchAction = "none";
-
-  // Защита от дублирования обработчиков
   if (svg.dataset.interactive === "true") return;
   svg.dataset.interactive = "true";
 
@@ -29,17 +54,32 @@ export function initInteractivity() {
     };
   }
 
-  // 2. Нажатие
+  // 1. Нажатие (выбор / редактирование / старт перетаскивания)
   svg.addEventListener("pointerdown", (e) => {
-    if (isDragging) return;
     const target = e.target.closest("[data-id]");
     if (!target) return;
 
+    const now = Date.now();
+    if (now - lastTap < 300) {
+      // Двойной клик — редактируем
+      e.preventDefault();
+      const id = target.dataset.id;
+      const prim = state.primitives.find(p => p.id === id);
+      if (prim) editPrimitive(prim);
+      lastTap = 0;
+      return;
+    }
+    lastTap = now;
+
+    // Одинарный клик — начинаем перетаскивание
+    e.preventDefault();
+    
+    // ВОТ ТУТ ВАЖНЫЕ СТРОЧКИ, КОТОРЫЕ ПОТЕРЯЛИСЬ:
     const id = target.dataset.id;
     selectedPrim = state.primitives.find(p => p.id === id);
     if (!selectedPrim) return;
+    // ------------------------------------------------
 
-    e.preventDefault();
     isDragging = true;
     activePointerId = e.pointerId;
     
@@ -51,7 +91,7 @@ export function initInteractivity() {
     svg.setPointerCapture(e.pointerId);
   });
 
-  // 3. Движение
+  // 2. Движение (перетаскивание)
   svg.addEventListener("pointermove", (e) => {
     if (!isDragging || !selectedPrim || e.pointerId !== activePointerId) return;
     e.preventDefault();
@@ -85,7 +125,7 @@ export function initInteractivity() {
     renderSheet(state.paper);
   });
 
-  // 4. Отпускание
+  // 3. Отпускание (сохранение)
   const endDrag = (e) => {
     if (e.pointerId !== activePointerId) return;
     isDragging = false;
