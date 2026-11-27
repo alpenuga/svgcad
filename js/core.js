@@ -11,6 +11,7 @@ export const FRAME = { left: 20, top: 5, right: 5, bottom: 5 };
 export const state = {
   paper: "A4P",
   primitives: [],
+  showStamp: true,
   stamp: {
     width: 185, height: 55,
     fields: {
@@ -108,7 +109,9 @@ for (const p of state.primitives) {
 }
 
   // 5. Штамп
-  if (window.__renderStamp) window.__renderStamp(svg);
+  if (state.showStamp && window.__renderStamp) {
+    window.__renderStamp(svg);
+  }
 
   return svg;
 }
